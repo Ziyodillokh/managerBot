@@ -19,7 +19,9 @@ interface DeleteState {
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 function range(from: Date, to: Date): string {
-  return from.toISOString().slice(0, 10) + ' — ' + to.toISOString().slice(0, 10);
+  return (
+    from.toISOString().slice(0, 10) + ' — ' + to.toISOString().slice(0, 10)
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,7 +51,9 @@ export class TelegramUpdate implements OnModuleInit {
         [{ command: 'start', description: '🏠 Menu / Menyu / Меню' }],
         { scope: { type: 'all_private_chats' } },
       );
-      await this.bot.telegram.setMyCommands([], { scope: { type: 'all_group_chats' } });
+      await this.bot.telegram.setMyCommands([], {
+        scope: { type: 'all_group_chats' },
+      });
       await this.bot.telegram.setMyCommands([]);
       this.logger.log('✅ Commands registered with Telegram');
     } catch (err) {
@@ -110,11 +114,17 @@ export class TelegramUpdate implements OnModuleInit {
     try {
       const member = await ctx.telegram.getChatMember(chat.id, from.id);
       if (member.status !== 'creator') {
-        this.logger.warn(`Non-owner (${from.id}) tried to add bot to "${chat.title}"`);
+        this.logger.warn(
+          `Non-owner (${from.id}) tried to add bot to "${chat.title}"`,
+        );
         try {
-          await ctx.telegram.sendMessage(from.id, t.notOwner(chat.title), { parse_mode: 'HTML' });
+          await ctx.telegram.sendMessage(from.id, t.notOwner(chat.title), {
+            parse_mode: 'HTML',
+          });
         } catch {}
-        try { await ctx.telegram.leaveChat(chat.id); } catch {}
+        try {
+          await ctx.telegram.leaveChat(chat.id);
+        } catch {}
         return;
       }
     } catch (err) {
@@ -127,19 +137,33 @@ export class TelegramUpdate implements OnModuleInit {
       const botMember = await ctx.telegram.getChatMember(chat.id, botInfo.id);
       if (botMember.status !== 'administrator') {
         try {
-          await ctx.telegram.sendMessage(from.id, t.noAdminRights(chat.title), { parse_mode: 'HTML' });
+          await ctx.telegram.sendMessage(from.id, t.noAdminRights(chat.title), {
+            parse_mode: 'HTML',
+          });
         } catch {}
       }
     } catch {}
 
     // Persist
-    await this.groupsService.findOrCreate(chat.id, chat.title, chat.type, chat.username);
-    await this.usersService.findOrCreate(from.id, from.first_name, from.last_name, from.username);
+    await this.groupsService.findOrCreate(
+      chat.id,
+      chat.title,
+      chat.type,
+      chat.username,
+    );
+    await this.usersService.findOrCreate(
+      from.id,
+      from.first_name,
+      from.last_name,
+      from.username,
+    );
 
     this.logger.log(`Bot added to group: "${chat.title}" (${chat.id})`);
 
     try {
-      await ctx.telegram.sendMessage(from.id, t.addedToGroup(chat.title), { parse_mode: 'HTML' });
+      await ctx.telegram.sendMessage(from.id, t.addedToGroup(chat.title), {
+        parse_mode: 'HTML',
+      });
     } catch {}
   }
 
@@ -240,10 +264,17 @@ export class TelegramUpdate implements OnModuleInit {
         callback_data: 'lang:' + code,
       })),
     ];
-    const opts: any = { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } };
+    const opts: any = {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: keyboard },
+    };
     if (edit) {
-      try { await (ctx as any).editMessageText(text, opts); } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -251,7 +282,9 @@ export class TelegramUpdate implements OnModuleInit {
 
   @Action(/^lang:(uz|ru|en)$/)
   async onLangSelect(@Ctx() ctx: Context): Promise<void> {
-    const code = ((ctx as any).callbackQuery?.data as string).split(':')[1] as Lang;
+    const code = ((ctx as any).callbackQuery?.data as string).split(
+      ':',
+    )[1] as Lang;
     this.langMap.set(ctx.from!.id, code);
     const t = this.t(ctx.from!.id);
     await (ctx as any).answerCbQuery(t.langChanged, { show_alert: false });
@@ -260,12 +293,17 @@ export class TelegramUpdate implements OnModuleInit {
 
   // ──────────────────────── Main menu ──────────────────────────────────────
 
-  private async getMyGroups(userId: number): Promise<Array<{ telegramId: string; title: string }>> {
+  private async getMyGroups(
+    userId: number,
+  ): Promise<Array<{ telegramId: string; title: string }>> {
     const allGroups = await this.groupsService.getActiveGroups();
     const myGroups: Array<{ telegramId: string; title: string }> = [];
     for (const group of allGroups) {
       try {
-        const member = await this.bot.telegram.getChatMember(Number(group.telegramId), userId);
+        const member = await this.bot.telegram.getChatMember(
+          Number(group.telegramId),
+          userId,
+        );
         if (member.status === 'creator') {
           myGroups.push({ telegramId: group.telegramId, title: group.title });
         }
@@ -289,7 +327,10 @@ export class TelegramUpdate implements OnModuleInit {
       text = t.menuNoGroups(status);
       keyboard = [
         [{ text: t.btnAddGroup, url: addUrl }],
-        [{ text: t.btnHelp, callback_data: 'help' }, { text: t.langBtn, callback_data: 'lang:select' }],
+        [
+          { text: t.btnHelp, callback_data: 'help' },
+          { text: t.langBtn, callback_data: 'lang:select' },
+        ],
       ];
     } else {
       const list = myGroups.map((g) => '• ' + g.title).join('\n');
@@ -297,14 +338,24 @@ export class TelegramUpdate implements OnModuleInit {
       keyboard = [
         [{ text: t.btnDelete, callback_data: 'delete:start' }],
         [{ text: t.btnAddNew, url: addUrl }],
-        [{ text: t.btnHelp, callback_data: 'help' }, { text: t.langBtn, callback_data: 'lang:select' }],
+        [
+          { text: t.btnHelp, callback_data: 'help' },
+          { text: t.langBtn, callback_data: 'lang:select' },
+        ],
       ];
     }
 
-    const opts: any = { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } };
+    const opts: any = {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: keyboard },
+    };
     if (edit) {
-      try { await (ctx as any).editMessageText(text, opts); } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -328,7 +379,9 @@ export class TelegramUpdate implements OnModuleInit {
     const t = this.t(ctx.from!.id);
     await (ctx as any).editMessageText(t.helpText, {
       parse_mode: 'HTML',
-      reply_markup: { inline_keyboard: [[{ text: t.btnBack, callback_data: 'menu:main' }]] },
+      reply_markup: {
+        inline_keyboard: [[{ text: t.btnBack, callback_data: 'menu:main' }]],
+      },
     });
     await (ctx as any).answerCbQuery();
   }
@@ -343,19 +396,27 @@ export class TelegramUpdate implements OnModuleInit {
 
     if (myGroups.length === 0) {
       await (ctx as any).editMessageText(t.noGroups, {
-        reply_markup: { inline_keyboard: [[{ text: t.btnBack, callback_data: 'menu:main' }]] },
+        reply_markup: {
+          inline_keyboard: [[{ text: t.btnBack, callback_data: 'menu:main' }]],
+        },
       });
       await (ctx as any).answerCbQuery();
       return;
     }
 
     if (myGroups.length === 1) {
-      await this.showGroupDeleteMenu(ctx, Number(myGroups[0].telegramId), myGroups[0].title);
+      await this.showGroupDeleteMenu(
+        ctx,
+        Number(myGroups[0].telegramId),
+        myGroups[0].title,
+      );
       return;
     }
 
     const keyboard = [
-      ...myGroups.map((g) => [{ text: '📋 ' + g.title, callback_data: 'del:g:' + g.telegramId }]),
+      ...myGroups.map((g) => [
+        { text: '📋 ' + g.title, callback_data: 'del:g:' + g.telegramId },
+      ]),
       [{ text: t.btnBack, callback_data: 'menu:main' }],
     ];
     await (ctx as any).editMessageText(t.selectGroup, {
@@ -390,7 +451,12 @@ export class TelegramUpdate implements OnModuleInit {
       reply_markup: {
         inline_keyboard: [
           [{ text: t.btnAllMsgs, callback_data: 'del:all:' + groupTelegramId }],
-          [{ text: t.btnUserMsgs, callback_data: 'del:user:' + groupTelegramId }],
+          [
+            {
+              text: t.btnUserMsgs,
+              callback_data: 'del:user:' + groupTelegramId,
+            },
+          ],
           [{ text: t.btnBack, callback_data: 'delete:start' }],
         ],
       },
@@ -418,7 +484,11 @@ export class TelegramUpdate implements OnModuleInit {
       t.inputAllDate(group?.title ?? 'Group', this.mtHint(userId)),
       {
         parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [[{ text: t.btnCancel, callback_data: 'del:cancel' }]] },
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: t.btnCancel, callback_data: 'del:cancel' }],
+          ],
+        },
       },
     );
     await (ctx as any).answerCbQuery();
@@ -442,7 +512,11 @@ export class TelegramUpdate implements OnModuleInit {
       t.inputUserDate(group?.title ?? 'Group', this.mtHint(userId)),
       {
         parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [[{ text: t.btnCancel, callback_data: 'del:cancel' }]] },
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: t.btnCancel, callback_data: 'del:cancel' }],
+          ],
+        },
       },
     );
     await (ctx as any).answerCbQuery();
@@ -454,8 +528,14 @@ export class TelegramUpdate implements OnModuleInit {
     this.deleteStates.delete(userId);
     const t = this.t(userId);
     await (ctx as any).editMessageText(t.cancelled);
-    try { await (ctx as any).answerCbQuery(); } catch {}
-    setTimeout(async () => { try { await this.sendMainMenu(ctx, true); } catch {} }, 1200);
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
+    setTimeout(async () => {
+      try {
+        await this.sendMainMenu(ctx, true);
+      } catch {}
+    }, 1200);
   }
 
   // ─────────────────── Text input handler ──────────────────────────────────
@@ -469,30 +549,56 @@ export class TelegramUpdate implements OnModuleInit {
     const t = this.t(userId);
 
     if (state.step === 'awaiting_date') {
-      const match = text.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})$/);
+      const match = text
+        .trim()
+        .match(/^(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})$/);
       if (!match) {
         await ctx.reply(t.badFormat + t.badDateFormat, { parse_mode: 'HTML' });
         return;
       }
       const from = new Date(match[1] + 'T00:00:00.000Z');
       const to = new Date(match[2] + 'T23:59:59.999Z');
-      if (from > to) { await ctx.reply(t.dateOrderError); return; }
+      if (from > to) {
+        await ctx.reply(t.dateOrderError);
+        return;
+      }
       this.deleteStates.delete(userId);
-      await this.executeDelete(ctx, state.groupTelegramId, state.groupTitle, from, to, null);
+      await this.executeDelete(
+        ctx,
+        state.groupTelegramId,
+        state.groupTitle,
+        from,
+        to,
+        null,
+      );
       return;
     }
 
     if (state.step === 'awaiting_user_date') {
-      const match = text.trim().match(/^(@?\w+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})$/);
+      const match = text
+        .trim()
+        .match(/^(@?\w+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})$/);
       if (!match) {
-        await ctx.reply(t.badFormat + t.badUserDateFormat, { parse_mode: 'HTML' });
+        await ctx.reply(t.badFormat + t.badUserDateFormat, {
+          parse_mode: 'HTML',
+        });
         return;
       }
       const from = new Date(match[2] + 'T00:00:00.000Z');
       const to = new Date(match[3] + 'T23:59:59.999Z');
-      if (from > to) { await ctx.reply(t.dateOrderError); return; }
+      if (from > to) {
+        await ctx.reply(t.dateOrderError);
+        return;
+      }
       this.deleteStates.delete(userId);
-      await this.executeDelete(ctx, state.groupTelegramId, state.groupTitle, from, to, match[1]);
+      await this.executeDelete(
+        ctx,
+        state.groupTelegramId,
+        state.groupTitle,
+        from,
+        to,
+        match[1],
+      );
     }
   }
 
@@ -510,52 +616,140 @@ export class TelegramUpdate implements OnModuleInit {
     const t = this.t(userId);
     const chatId = ctx.chat!.id;
 
-    const progressMsg = await ctx.reply(t.searching(groupTitle), { parse_mode: 'HTML' });
+    const progressMsg = await ctx.reply(t.searching(groupTitle), {
+      parse_mode: 'HTML',
+    });
     const progressId = (progressMsg as any).message_id;
 
     const edit = async (text: string, opts?: any) => {
       try {
-        await this.bot.telegram.editMessageText(chatId, progressId, undefined, text, {
-          parse_mode: 'HTML',
-          ...opts,
-        });
+        await this.bot.telegram.editMessageText(
+          chatId,
+          progressId,
+          undefined,
+          text,
+          { parse_mode: 'HTML', ...opts },
+        );
       } catch {}
     };
 
     try {
-      // ── Get group owner ──────────────────────────────────────────────────
+      // ── Get group owner to protect their messages ────────────────────────
       let ownerTelegramId: string | null = null;
+      let ownerNumericId: number | null = null;
       try {
-        const admins = await this.bot.telegram.getChatAdministrators(groupTelegramId);
+        const admins =
+          await this.bot.telegram.getChatAdministrators(groupTelegramId);
         const owner = admins.find((a) => a.status === 'creator');
-        if (owner) ownerTelegramId = String(owner.user.id);
+        if (owner) {
+          ownerTelegramId = String(owner.user.id);
+          ownerNumericId = owner.user.id;
+        }
       } catch {}
 
-      // ── Resolve target user ──────────────────────────────────────────────
+      // ── Resolve target user (for single-user delete) ──────────────────
       let targetTelegramId: string | undefined;
+      let targetNumericId: number | undefined;
       if (username) {
         const uname = username.startsWith('@') ? username.slice(1) : username;
         const user = await this.usersService.findByUsername(uname);
-        if (!user) { await edit(t.userNotFound(uname)); return; }
+        if (!user) {
+          await edit(t.userNotFound(uname));
+          return;
+        }
         targetTelegramId = user.telegramId;
+        targetNumericId = Number(user.telegramId);
         if (ownerTelegramId && targetTelegramId === ownerTelegramId) {
           await edit(t.ownerProtected);
           return;
         }
       }
 
-      // ── Fetch messages from DB ───────────────────────────────────────────
+      const excludeIds: number[] = ownerNumericId ? [ownerNumericId] : [];
+      const r = range(fromDate, toDate);
+
+      // ════════════════════════════════════════════════════════════════════
+      //  STRATEGY A: MTProto (USER session) — reads Telegram history directly
+      //  This works for ALL messages regardless of age.
+      // ════════════════════════════════════════════════════════════════════
+      if (this.mtproto.isReady()) {
+        const result = await this.mtproto.fetchAndDeleteByDateRange(
+          groupTelegramId,
+          fromDate,
+          toDate,
+          targetNumericId,
+          excludeIds,
+          async (found, done) => {
+            await edit(
+              t.deleting(found) + `\n⬛ ${done}/${found}`,
+            );
+          },
+        );
+
+        if (result.total === 0) {
+          await edit(username ? t.notFoundUser(username, r) : t.notFound(r));
+          return;
+        }
+
+        // Also clean DB for the records we had
+        try {
+          const dbMessages = await this.messagesService.getMessagesByDateRange(
+            groupTelegramId,
+            fromDate,
+            toDate,
+            targetTelegramId,
+          );
+          const dbIds = dbMessages
+            .filter(
+              (m) =>
+                !(
+                  ownerTelegramId &&
+                  String(m.telegramUserId) === ownerTelegramId
+                ),
+            )
+            .map((m) => m.id);
+          if (dbIds.length)
+            await this.messagesService.deleteMessagesFromDb(dbIds);
+        } catch {}
+
+        const mode = this.modeLabel(userId);
+        const summary = username
+          ? t.resultUser(groupTitle, username, result.deleted, r, mode)
+          : t.resultAll(groupTitle, result.deleted, r, mode);
+
+        await edit(
+          summary + (result.failed > 0 ? t.failedSome(result.failed) : ''),
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: t.btnRepeat, callback_data: 'delete:start' },
+                  { text: t.btnMain, callback_data: 'menu:main' },
+                ],
+              ],
+            },
+          },
+        );
+        return;
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      //  STRATEGY B: Bot API fallback — uses OUR DB (48h limit applies)
+      //  Only messages tracked while the bot was active will be deleted.
+      // ════════════════════════════════════════════════════════════════════
       const messages = await this.messagesService.getMessagesByDateRange(
-        groupTelegramId, fromDate, toDate, targetTelegramId,
+        groupTelegramId,
+        fromDate,
+        toDate,
+        targetTelegramId,
       );
 
-      // Exclude owner messages
       const toDelete = messages.filter(
-        (m) => !(ownerTelegramId && String(m.telegramUserId) === ownerTelegramId),
+        (m) =>
+          !(ownerTelegramId && String(m.telegramUserId) === ownerTelegramId),
       );
 
       if (toDelete.length === 0) {
-        const r = range(fromDate, toDate);
         await edit(username ? t.notFoundUser(username, r) : t.notFound(r));
         return;
       }
@@ -563,61 +757,44 @@ export class TelegramUpdate implements OnModuleInit {
       await edit(t.deleting(toDelete.length));
 
       const messageIds = toDelete.map((m) => Number(m.telegramMessageId));
-      // Map telegramMessageId → DB row id (for cleanup)
       const dbIdMap: Record<number, number> = {};
       for (const m of toDelete) dbIdMap[Number(m.telegramMessageId)] = m.id;
 
       let deleted = 0;
       let failed = 0;
 
-      // ── MTProto (fast, no 48h limit) ─────────────────────────────────────
-      if (this.mtproto.isReady()) {
-        const result = await this.mtproto.deleteMessages(groupTelegramId, messageIds);
-        deleted = result.deleted;
-        failed = result.failed;
-      } else {
-        // ── Bot API fallback (48h limit applies) ─────────────────────────
-        const BATCH = 100;
-        for (let i = 0; i < messageIds.length; i += BATCH) {
-          const batch = messageIds.slice(i, i + BATCH);
-          try {
-            // deleteMessages bulk — Telegram Bot API 7.0+
-            await (this.bot.telegram as any).deleteMessages(groupTelegramId, batch);
-            deleted += batch.length;
-          } catch {
-            // Fallback: one by one
-            for (const id of batch) {
-              try {
-                await this.bot.telegram.deleteMessage(groupTelegramId, id);
-                deleted++;
-              } catch {
-                failed++;
-              }
+      const BATCH = 100;
+      for (let i = 0; i < messageIds.length; i += BATCH) {
+        const batch = messageIds.slice(i, i + BATCH);
+        try {
+          await (this.bot.telegram as any).deleteMessages(
+            groupTelegramId,
+            batch,
+          );
+          deleted += batch.length;
+        } catch {
+          for (const id of batch) {
+            try {
+              await this.bot.telegram.deleteMessage(groupTelegramId, id);
+              deleted++;
+            } catch {
+              failed++;
             }
           }
-          // Progress update every 500 messages
-          if (i > 0 && i % 500 === 0) {
-            try {
-              await this.bot.telegram.editMessageText(
-                chatId, progressId, undefined,
-                t.deleting(toDelete.length) + `\n⬛ ${i}/${toDelete.length}`,
-                { parse_mode: 'HTML' },
-              );
-            } catch {}
-          }
-          if (i + BATCH < messageIds.length) await new Promise((r) => setTimeout(r, 350));
         }
+        if (i > 0 && i % 500 === 0) {
+          await edit(
+            t.deleting(toDelete.length) + `\n⬛ ${i}/${toDelete.length}`,
+          );
+        }
+        if (i + BATCH < messageIds.length)
+          await new Promise((res) => setTimeout(res, 350));
       }
 
-      // ── Clean DB (remove ALL attempted messages — deleted or already gone) ──
-      // We remove all, because:
-      //   • Successfully deleted → obviously should be removed
-      //   • "Failed" ones with MESSAGE_ID_INVALID → already deleted on Telegram
+      // Clean DB
       const dbIds = messageIds.map((id) => dbIdMap[id]).filter(Boolean);
       if (dbIds.length) await this.messagesService.deleteMessagesFromDb(dbIds);
 
-      // ── Result summary ───────────────────────────────────────────────────
-      const r = range(fromDate, toDate);
       const mode = this.modeLabel(userId);
       const summary = username
         ? t.resultUser(groupTitle, username, deleted, r, mode)
@@ -635,7 +812,9 @@ export class TelegramUpdate implements OnModuleInit {
       });
     } catch (err) {
       this.logger.error('executeDelete error', err);
-      try { await ctx.reply(t.error); } catch {}
+      try {
+        await ctx.reply(t.error);
+      } catch {}
     }
   }
 }

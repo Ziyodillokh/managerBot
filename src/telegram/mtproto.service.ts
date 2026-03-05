@@ -14,7 +14,7 @@ import { FloodWaitError } from 'telegram/errors';
 // Resolved peer cache entry
 interface PeerEntry {
   type: 'channel' | 'group'; // channel = supergroup|broadcast; group = basic group
-  entity: any;               // Resolved gramjs entity object (has accessHash)
+  entity: any; // Resolved gramjs entity object (has accessHash)
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,10 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
   // ──────────────────────────────────────────────────────────────────────────
 
   async onModuleInit(): Promise<void> {
-    const apiId = parseInt(this.config.get<string>('telegram.apiId') ?? '0', 10);
+    const apiId = parseInt(
+      this.config.get<string>('telegram.apiId') ?? '0',
+      10,
+    );
     const apiHash = this.config.get<string>('telegram.apiHash') ?? '';
     const sessionStr = this.config.get<string>('telegram.session') ?? '';
 
@@ -53,14 +56,19 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      this.client = new TelegramClient(new StringSession(sessionStr), apiId, apiHash, {
-        connectionRetries: 5,
-        retryDelay: 1000,
-        autoReconnect: true,
-        useWSS: true,
-        // Silence internal gramjs logs
-        baseLogger: this.silentLogger(),
-      } as any);
+      this.client = new TelegramClient(
+        new StringSession(sessionStr),
+        apiId,
+        apiHash,
+        {
+          connectionRetries: 5,
+          retryDelay: 1000,
+          autoReconnect: true,
+          useWSS: true,
+          // Silence internal gramjs logs
+          baseLogger: this.silentLogger(),
+        } as any,
+      );
 
       await this.client.connect();
 
@@ -113,12 +121,16 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
 
     const className: string = (entity as any).className ?? '';
     const type: PeerEntry['type'] =
-      className === 'Channel' || className === 'ChannelForbidden' ? 'channel' : 'group';
+      className === 'Channel' || className === 'ChannelForbidden'
+        ? 'channel'
+        : 'group';
 
     const entry: PeerEntry = { type, entity };
     this.peerCache.set(chatId, entry);
 
-    this.logger.debug(`Peer resolved: chatId=${chatId} type=${type} (${className})`);
+    this.logger.debug(
+      `Peer resolved: chatId=${chatId} type=${type} (${className})`,
+    );
     return entry;
   }
 
@@ -146,14 +158,21 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       return { deleted: ids.length, failed: 0 };
     } catch (err: any) {
       // ── FloodWait ──────────────────────────────────────────────────────────
-      if (err instanceof FloodWaitError || err?.errorMessage?.startsWith('FLOOD_WAIT')) {
+      if (
+        err instanceof FloodWaitError ||
+        err?.errorMessage?.startsWith('FLOOD_WAIT')
+      ) {
         const waitSec: number = err.seconds ?? 30;
         if (attempt < MAX_ATTEMPTS) {
-          this.logger.warn(`FLOOD_WAIT_${waitSec}s — waiting before retry (attempt ${attempt + 1})...`);
+          this.logger.warn(
+            `FLOOD_WAIT_${waitSec}s — waiting before retry (attempt ${attempt + 1})...`,
+          );
           await this.sleep((waitSec + 2) * 1000);
           return this.deleteBatch(peer, ids, attempt + 1);
         }
-        this.logger.warn(`FLOOD_WAIT exceeded max retries for ${ids.length} messages.`);
+        this.logger.warn(
+          `FLOOD_WAIT exceeded max retries for ${ids.length} messages.`,
+        );
         return { deleted: 0, failed: ids.length };
       }
 
@@ -172,7 +191,9 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         (msg.includes('CHANNEL_INVALID') || msg.includes('PEER_ID_INVALID')) &&
         attempt === 0
       ) {
-        this.logger.warn(`Peer error: ${msg} — invalidating cache and retrying...`);
+        this.logger.warn(
+          `Peer error: ${msg} — invalidating cache and retrying...`,
+        );
         // Clear cache so next call re-resolves
         const chatIds = [...this.peerCache.entries()]
           .filter(([, v]) => v.entity === peer.entity)
@@ -223,7 +244,9 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     try {
       peer = await this.resolvePeer(chatId);
     } catch (err: any) {
-      this.logger.error(`Failed to resolve peer for chatId=${chatId}: ${err?.message ?? err}`);
+      this.logger.error(
+        `Failed to resolve peer for chatId=${chatId}: ${err?.message ?? err}`,
+      );
       return { deleted: 0, failed: messageIds.length };
     }
 
@@ -266,6 +289,183 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  //  Main API: fetch messages from Telegram history and delete them
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * THE CORRECT DELETE METHOD.
+   *
+   * Fetches message IDs directly from Telegram history (via MTProto USER session),
+   * then deletes them — NO database dependency, NO 48-hour limit.
+   *
+   * @param chatId        Bot-API style chat ID (e.g. -1001234567890)
+   * @param fromDate      Start of date range (inclusive)
+   * @param toDate        End of date range (inclusive)
+   * @param filterUserId  (optional) Only delete messages from this user ID
+   * @param excludeUserIds  User IDs whose messages must NOT be deleted (e.g. owner, bots)
+   * @param onProgress    (optional) Called periodically with current counts
+   */
+  async fetchAndDeleteByDateRange(
+    chatId: number,
+    fromDate: Date,
+    toDate: Date,
+    filterUserId?: number,
+    excludeUserIds: number[] = [],
+    onProgress?: (found: number, deleted: number) => Promise<void>,
+  ): Promise<{ total: number; deleted: number; failed: number }> {
+    if (!this.isReady()) {
+      return { total: 0, deleted: 0, failed: 0 };
+    }
+
+    const fromTs = Math.floor(fromDate.getTime() / 1000); // unix seconds
+    const toTs = Math.floor(toDate.getTime() / 1000);
+
+    // Resolve peer once
+    let peer: PeerEntry;
+    try {
+      peer = await this.resolvePeer(chatId);
+    } catch (err: any) {
+      this.logger.error(`resolvePeer failed for ${chatId}: ${err?.message}`);
+      return { total: 0, deleted: 0, failed: 0 };
+    }
+
+    // ── Step 1: Collect all message IDs in the date range ─────────────────
+    const collectedIds: number[] = [];
+    const HISTORY_LIMIT = 100; // messages per page
+    let offsetId = 0; // start from newest matching messages
+
+    // We use offsetDate = toTs + 1 so the first page starts AT toDate
+    let offsetDate = toTs + 1;
+    let keepFetching = true;
+
+    this.logger.log(
+      `Fetching history for chatId=${chatId} from ${fromDate.toISOString()} to ${toDate.toISOString()}`,
+    );
+
+    while (keepFetching) {
+      let result: any;
+      try {
+        // messages.getHistory returns messages sorted newest-first
+        result = await this.client!.invoke(
+          new Api.messages.GetHistory({
+            peer: peer.entity,
+            offsetId,
+            offsetDate,
+            addOffset: 0,
+            limit: HISTORY_LIMIT,
+            maxId: 0,
+            minId: 0,
+            hash: 0 as any,
+          }),
+        );
+      } catch (err: any) {
+        const msg: string = err?.errorMessage ?? err?.message ?? '';
+        if (err instanceof FloodWaitError || msg.startsWith('FLOOD_WAIT')) {
+          const waitSec = err.seconds ?? 15;
+          this.logger.warn(`History FloodWait ${waitSec}s…`);
+          await this.sleep((waitSec + 2) * 1000);
+          continue; // retry same page
+        }
+        this.logger.error(`GetHistory error: ${msg}`);
+        break;
+      }
+
+      const messages: any[] = result?.messages ?? [];
+      if (messages.length === 0) break;
+
+      for (const msg of messages) {
+        // MessageEmpty or ServiceMessage — skip
+        if (!msg.date || msg.className === 'MessageEmpty') continue;
+
+        const ts: number = msg.date; // unix seconds (UTC)
+
+        // We've gone past the start of the range — stop
+        if (ts < fromTs) {
+          keepFetching = false;
+          break;
+        }
+
+        // Skip messages that are after our range (shouldn't happen, but safe)
+        if (ts > toTs) continue;
+
+        const senderId: number =
+          msg.fromId?.userId?.toJSNumber?.() ??
+          msg.fromId?.userId ??
+          msg.peerId?.userId?.toJSNumber?.() ??
+          0;
+
+        // Exclude protected users (owner, bots, etc.)
+        if (senderId && excludeUserIds.includes(senderId)) continue;
+
+        // If filter by user — only collect matching
+        if (filterUserId && senderId !== filterUserId) continue;
+
+        collectedIds.push(msg.id);
+      }
+
+      // Prepare next page: use the oldest message's id as offsetId
+      const last = messages[messages.length - 1];
+      if (!last || !last.id) break;
+      offsetId = last.id;
+      offsetDate = last.date;
+
+      // Safety: if last message is already before fromDate, stop
+      if (last.date < fromTs) keepFetching = false;
+
+      // Small pause to avoid hitting getHistory rate limit
+      await this.sleep(100);
+    }
+
+    const total = collectedIds.length;
+    this.logger.log(
+      `History scan complete: found ${total} messages to delete in chatId=${chatId}`,
+    );
+
+    if (total === 0) return { total: 0, deleted: 0, failed: 0 };
+
+    // ── Step 2: Delete collected IDs ──────────────────────────────────────
+    const BATCH_SIZE = 100;
+    const CONCURRENCY = 3;
+    const batches: number[][] = [];
+    for (let i = 0; i < collectedIds.length; i += BATCH_SIZE) {
+      batches.push(collectedIds.slice(i, i + BATCH_SIZE));
+    }
+
+    let deleted = 0;
+    let failed = 0;
+    let progressTimer = 0;
+
+    for (let i = 0; i < batches.length; i += CONCURRENCY) {
+      const window = batches.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        window.map((batch) => this.deleteBatch(peer, batch)),
+      );
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          deleted += r.value.deleted;
+          failed += r.value.failed;
+        } else {
+          failed += BATCH_SIZE;
+        }
+      }
+
+      // Call progress callback every ~500 messages
+      progressTimer += window.length * BATCH_SIZE;
+      if (onProgress && progressTimer >= 500) {
+        progressTimer = 0;
+        try { await onProgress(total, deleted); } catch {}
+      }
+
+      if (i + CONCURRENCY < batches.length) await this.sleep(150);
+    }
+
+    this.logger.log(
+      `fetchAndDelete chatId=${chatId}: ✅${deleted} deleted, ⚠️${failed} failed, total=${total}`,
+    );
+    return { total, deleted, failed };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   //  Utilities
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -275,7 +475,13 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
 
   private silentLogger() {
     const noop = () => {};
-    const obj = { warn: noop, error: noop, info: noop, debug: noop, trace: noop };
+    const obj = {
+      warn: noop,
+      error: noop,
+      info: noop,
+      debug: noop,
+      trace: noop,
+    };
     return { ...obj, child: () => obj };
   }
 }
