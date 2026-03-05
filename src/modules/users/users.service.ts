@@ -1,0 +1,46 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './entities/user.entity';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+  ) {}
+
+  async findOrCreate(
+    telegramId: string | number,
+    firstName: string,
+    lastName?: string,
+    username?: string,
+  ): Promise<User> {
+    const tid = String(telegramId);
+    let user = await this.userRepo.findOne({ where: { telegramId: tid } });
+    if (!user) {
+      user = this.userRepo.create({
+        telegramId: tid,
+        firstName,
+        lastName,
+        username,
+      });
+      await this.userRepo.save(user);
+    } else {
+      user.firstName = firstName;
+      if (lastName !== undefined) user.lastName = lastName;
+      if (username !== undefined) user.username = username;
+      await this.userRepo.save(user);
+    }
+    return user;
+  }
+
+  async findByTelegramId(telegramId: string | number): Promise<User | null> {
+    return this.userRepo.findOne({ where: { telegramId: String(telegramId) } });
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    const clean = username.startsWith('@') ? username.slice(1) : username;
+    return this.userRepo.findOne({ where: { username: clean } });
+  }
+}
