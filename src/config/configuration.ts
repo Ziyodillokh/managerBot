@@ -3,6 +3,9 @@ export default () => ({
   nodeEnv: process.env.NODE_ENV || 'development',
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
+    apiId: process.env.TELEGRAM_API_ID || '',
+    apiHash: process.env.TELEGRAM_API_HASH || '',
+    session: process.env.TELEGRAM_SESSION || '',
   },
   database: {
     host: process.env.DB_HOST || 'localhost',

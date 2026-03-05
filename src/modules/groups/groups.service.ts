@@ -40,10 +40,16 @@ export class GroupsService {
   }
 
   async getActiveGroups(): Promise<Group[]> {
-    return this.groupRepo.find({ where: { isActive: true }, order: { title: 'ASC' } });
+    return this.groupRepo.find({
+      where: { isActive: true },
+      order: { title: 'ASC' },
+    });
   }
 
   async deactivate(telegramId: string | number): Promise<void> {
-    await this.groupRepo.update({ telegramId: String(telegramId) }, { isActive: false });
+    await this.groupRepo.update(
+      { telegramId: String(telegramId) },
+      { isActive: false },
+    );
   }
 }

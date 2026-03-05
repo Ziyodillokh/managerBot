@@ -5,11 +5,9 @@ import { InjectBot } from 'nestjs-telegraf';
 import { GroupsService } from '../modules/groups/groups.service';
 import { UsersService } from '../modules/users/users.service';
 import { MessagesService } from '../modules/messages/messages.service';
+import { MtprotoService } from './mtproto.service';
 
-// ─── Bot egasining Telegram ID si ───────────────────────────────────────────
-const MASTER_ID = '2527188';
-
-// ─── Conversation state for delete flow ─────────────────────────────────────
+// ─── Delete conversation state ────────────────────────────────────────────────
 interface DeleteState {
   step: 'awaiting_date' | 'awaiting_user_date';
   groupTelegramId: number;
@@ -19,8 +17,6 @@ interface DeleteState {
 @Update()
 export class TelegramUpdate implements OnModuleInit {
   private readonly logger = new Logger(TelegramUpdate.name);
-
-  /** In-memory delete flow state per user */
   private readonly deleteStates = new Map<number, DeleteState>();
 
   constructor(
@@ -28,18 +24,17 @@ export class TelegramUpdate implements OnModuleInit {
     private readonly groupsService: GroupsService,
     private readonly usersService: UsersService,
     private readonly messagesService: MessagesService,
+    private readonly mtproto: MtprotoService,
   ) {}
 
-  // ─────────────────────── Bot commands registration ───────────────────────
+  // ─────────────────────────── Bot commands ──────────────────────────────────
 
   async onModuleInit(): Promise<void> {
     try {
-      // Private chat: only /start
       await this.bot.telegram.setMyCommands(
         [{ command: 'start', description: '🏠 Bosh menyu' }],
         { scope: { type: 'all_private_chats' } },
       );
-      // Groups: NO commands visible
       await this.bot.telegram.setMyCommands(
         [],
         { scope: { type: 'all_group_chats' } },
@@ -51,7 +46,7 @@ export class TelegramUpdate implements OnModuleInit {
     }
   }
 
-  // ─────────────────── Bot guruhga qoshildi / chiqarildi ─────────────────────
+  // ──────────────────── Bot guruhga qoshildi / chiqarildi ─────────────────────
 
   @On('my_chat_member')
   async onMyChatMember(@Ctx() ctx: Context): Promise<void> {
@@ -64,39 +59,31 @@ export class TelegramUpdate implements OnModuleInit {
 
     if (chat.type === 'private') return;
 
-    // Bot removed from group
     if (['left', 'kicked'].includes(newStatus)) {
       await this.groupsService.deactivate(chat.id);
-      this.logger.log(`Bot removed from group: ${chat.title} (${chat.id})`);
+      this.logger.log(`Bot removed from: ${chat.title}`);
       return;
     }
 
     if (!['member', 'administrator'].includes(newStatus)) return;
 
-    // Only MASTER can add the bot
-    if (String(from.id) !== MASTER_ID) {
-      this.logger.warn(`Non-master (${from.id}) tried to add bot to ${chat.title}`);
-      try { await ctx.telegram.leaveChat(chat.id); } catch {}
-      return;
-    }
-
-    // Verify master is the OWNER (creator) of this group
+    // Adder must be the OWNER (creator) of this group
     try {
-      const member = await ctx.telegram.getChatMember(chat.id, Number(MASTER_ID));
+      const member = await ctx.telegram.getChatMember(chat.id, from.id);
       if (member.status !== 'creator') {
-        await ctx.telegram.sendMessage(
-          Number(MASTER_ID),
-          `⚠️ <b>${chat.title}</b> guruhiga qoshildim.\n\n` +
-            `Lekin siz bu guruhning <b>egasi (creator)</b> emassiz.\n` +
-            `Bot faqat siz ega bolgan guruhlarda ishlaydi.\n\n` +
-            `Guruhdan chiqyapman.`,
-          { parse_mode: 'HTML' },
-        );
-        await ctx.telegram.leaveChat(chat.id);
+        this.logger.warn(`Non-owner ${from.id} tried to add bot to ${chat.title}`);
+        try {
+          await ctx.telegram.sendMessage(
+            from.id,
+            '<b>❌ Xato!</b>\n\nSiz <b>' + chat.title + '</b> guruhining egasi emassiz.\n\nBot faqat siz ega bolgan guruhlarda ishlaydi. Guruhdan chiqyapman.',
+            { parse_mode: 'HTML' },
+          );
+        } catch {}
+        try { await ctx.telegram.leaveChat(chat.id); } catch {}
         return;
       }
     } catch (err) {
-      this.logger.error(`getChatMember error in group ${chat.id}`, err);
+      this.logger.error('getChatMember error', err);
     }
 
     // Check bot has admin rights
@@ -104,18 +91,16 @@ export class TelegramUpdate implements OnModuleInit {
       const botInfo = await this.bot.telegram.getMe();
       const botMember = await ctx.telegram.getChatMember(chat.id, botInfo.id);
       if (botMember.status !== 'administrator') {
-        await ctx.telegram.sendMessage(
-          Number(MASTER_ID),
-          `⚠️ <b>${chat.title}</b> guruhiga qoshildim.\n\n` +
-            `Lekin menga <b>admin huquqlari</b> berilmagan.\n` +
-            `Xabarlarni ochirish uchun meni admin qiling:\n` +
-            `✅ Delete messages huquqini bering.`,
-          { parse_mode: 'HTML' },
-        );
+        try {
+          await ctx.telegram.sendMessage(
+            from.id,
+            '<b>⚠️ ' + chat.title + '</b>\n\nBot guruhga qoshildi lekin <b>admin huquqi</b> berilmagan.\n\n✅ Delete messages huquqini bering, keyin ishlaydi.',
+            { parse_mode: 'HTML' },
+          );
+        } catch {}
       }
     } catch {}
 
-    // Save group to DB
     await this.groupsService.findOrCreate(chat.id, chat.title, chat.type, chat.username);
     await this.usersService.findOrCreate(from.id, from.first_name, from.last_name, from.username);
 
@@ -123,15 +108,14 @@ export class TelegramUpdate implements OnModuleInit {
 
     try {
       await ctx.telegram.sendMessage(
-        Number(MASTER_ID),
-        `✅ <b>${chat.title}</b> guruhiga qoshildi!\n\n` +
-          `Endi /start orqali xabarlarni boshqarishingiz mumkin.`,
+        from.id,
+        '✅ <b>' + chat.title + '</b> guruhiga muvaffaqiyatli qoshildim!\n\nEndi /start buyrug\'i orqali xabarlarni boshqarishingiz mumkin.',
         { parse_mode: 'HTML' },
       );
     } catch {}
   }
 
-  // ──────────────────── Barcha xabarlarni kuzatish ─────────────────────────
+  // ────────────────── Barcha xabarlarni kuzatish (group) ───────────────────
 
   @On('message')
   async onMessage(
@@ -143,11 +127,10 @@ export class TelegramUpdate implements OnModuleInit {
       if (!msg || !ctx.from) return next();
 
       const text: string = msg.text ?? '';
-      const isMaster = String(ctx.from.id) === MASTER_ID;
 
-      // Private chat: handle delete flow state machine
+      // Private chat: handle delete flow input
       if (ctx.chat?.type === 'private') {
-        if (isMaster && !text.startsWith('/')) {
+        if (!text.startsWith('/')) {
           const state = this.deleteStates.get(ctx.from.id);
           if (state) {
             await this.handleDeleteInput(ctx, text, state);
@@ -157,27 +140,33 @@ export class TelegramUpdate implements OnModuleInit {
         return next();
       }
 
-      // Group: skip commands, save messages to DB
+      // Group: skip commands
       if (text.startsWith('/')) return next();
 
-      const from = ctx.from;
+      // Save user
+      await this.usersService.findOrCreate(
+        ctx.from.id,
+        ctx.from.first_name,
+        ctx.from.last_name,
+        ctx.from.username,
+      );
 
-      await this.usersService.findOrCreate(from.id, from.first_name, from.last_name, from.username);
-
+      // Save group
       const title = (ctx.chat as any).title ?? 'Unknown';
       const chatUsername = (ctx.chat as any).username;
       await this.groupsService.findOrCreate(ctx.chat!.id, title, ctx.chat!.type, chatUsername);
 
+      // Save message for future bulk-delete
       const sentAt = new Date(msg.date * 1000);
       await this.messagesService.saveMessage(
         msg.message_id,
         ctx.chat!.id,
-        from.id,
-        from.first_name,
+        ctx.from.id,
+        ctx.from.first_name,
         sentAt,
         text || undefined,
-        from.username,
-        from.last_name,
+        ctx.from.username,
+        ctx.from.last_name,
       );
     } catch (err) {
       this.logger.error('onMessage error', err);
@@ -185,17 +174,12 @@ export class TelegramUpdate implements OnModuleInit {
     return next();
   }
 
-  // ─────────────────────────── /start ─────────────────────────────────────
+  // ──────────────────────────── /start ─────────────────────────────────────
 
   @Start()
   async onStart(@Ctx() ctx: Context): Promise<void> {
     try {
       if (ctx.chat?.type !== 'private') return;
-
-      if (String(ctx.from?.id) !== MASTER_ID) {
-        await ctx.reply('❌ Bu bot shaxsiy foydalanish uchun moljallangan.');
-        return;
-      }
 
       this.deleteStates.delete(ctx.from!.id);
 
@@ -212,42 +196,71 @@ export class TelegramUpdate implements OnModuleInit {
     }
   }
 
-  // ─────────────────────── Bosh menyu ──────────────────────────────────────
+  // ─────────────────────────── Bosh menyu ──────────────────────────────────
+
+  private async getMyGroups(userId: number): Promise<Array<{ telegramId: string; title: string }>> {
+    const allGroups = await this.groupsService.getActiveGroups();
+    const myGroups: Array<{ telegramId: string; title: string }> = [];
+
+    for (const group of allGroups) {
+      try {
+        const member = await this.bot.telegram.getChatMember(
+          Number(group.telegramId),
+          userId,
+        );
+        if (member.status === 'creator') {
+          myGroups.push({ telegramId: group.telegramId, title: group.title });
+        }
+      } catch {}
+    }
+    return myGroups;
+  }
 
   private async sendMainMenu(ctx: Context, edit: boolean): Promise<void> {
-    const groups = await this.groupsService.getActiveGroups();
     const botInfo = await this.bot.telegram.getMe();
+    const addUrl = 'https://t.me/' + botInfo.username + '?startgroup=true';
+    const userId = ctx.from!.id;
+
+    const myGroups = await this.getMyGroups(userId);
 
     let text: string;
     let keyboard: any[][];
 
-    if (groups.length === 0) {
+    const mtprotoStatus = this.mtproto.isReady()
+      ? '🟢 MTProto: Faol (har qanday muddatdagi xabar)'
+      : '🟡 Bot API: Faqat 48 soat ichidagi xabarlar';
+
+    if (myGroups.length === 0) {
       text =
-        `🛡 <b>Guardy Bot</b>\n\n` +
-        `Hozircha hech qanday guruh qoshilmagan.\n\n` +
-        `Bot faqat siz <b>ega (creator)</b> bolgan guruhlarda ishlaydi.\n` +
-        `Botni guruhga qoshing va admin huquqlarini bering:`;
+        '🛡 <b>Guardy Bot</b>\n\n' +
+        mtprotoStatus + '\n\n' +
+        'Hozircha siz ega bolgan guruh yoq.\n\n' +
+        'Botni guruhga qoshing (siz o\'sha guruhning egasi / creator bolishingiz kerak) va admin huquqlarini bering:';
       keyboard = [
-        [{ text: "➕ Guruhga qoshish", url: `https://t.me/${botInfo.username}?startgroup=true` }],
+        [{ text: "➕ Guruhga qo'shish", url: addUrl }],
+        [{ text: '❓ Yordam', callback_data: 'help' }],
       ];
     } else {
-      const groupList = groups.map((g) => `• ${g.title}`).join('\n');
+      const groupList = myGroups.map((g) => '• ' + g.title).join('\n');
       text =
-        `🛡 <b>Guardy Bot</b>\n\n` +
-        `📋 Faol guruhlar: <b>${groups.length} ta</b>\n\n` +
-        `${groupList}\n\n` +
-        `Xabarlarni ochirish uchun quyidagi tugmani bosing:`;
+        '🛡 <b>Guardy Bot</b>\n\n' +
+        mtprotoStatus + '\n\n' +
+        '📋 Sizning guruhlaringiz (' + myGroups.length + ' ta):\n' + groupList + '\n\n' +
+        'Xabarlarni ochirish uchun quyidagi tugmani bosing:';
       keyboard = [
-        [{ text: "🗑️ Xabarlarni ochirish", callback_data: 'delete:start' }],
-        [{ text: "➕ Yangi guruh qoshish", url: `https://t.me/${botInfo.username}?startgroup=true` }],
+        [{ text: "🗑️ Xabarlarni o'chirish", callback_data: 'delete:start' }],
+        [{ text: "➕ Yangi guruh qo'shish", url: addUrl }],
+        [{ text: '❓ Yordam', callback_data: 'help' }],
       ];
     }
 
     const opts: any = { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } };
 
     if (edit) {
-      await (ctx as any).editMessageText(text, opts);
-      await (ctx as any).answerCbQuery();
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try { await (ctx as any).answerCbQuery(); } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -255,87 +268,110 @@ export class TelegramUpdate implements OnModuleInit {
 
   @Action('menu:main')
   async onMenuMain(@Ctx() ctx: Context): Promise<void> {
-    if (String(ctx.from?.id) !== MASTER_ID) {
-      await (ctx as any).answerCbQuery('❌');
-      return;
-    }
     if (ctx.from) this.deleteStates.delete(ctx.from.id);
     await this.sendMainMenu(ctx, true);
+  }
+
+  // ─────────────────────── Yordam ──────────────────────────────────────────
+
+  @Action('help')
+  async onHelp(@Ctx() ctx: Context): Promise<void> {
+    const text =
+      '❓ <b>Yordam</b>\n\n' +
+      '<b>1. Botni guruhga qoshing</b>\n' +
+      '   • "➕ Guruhga qoshish" tugmasini bosing\n' +
+      '   • Faqat siz <b>ega (creator)</b> bolgan guruhlar ishlaydi\n\n' +
+      '<b>2. Botga admin huquqi bering</b>\n' +
+      '   ✅ Delete messages\n\n' +
+      '<b>3. Xabarlarni turing:</b>\n' +
+      '   • Barcha xabarlar (sana oraligida)\n' +
+      '   • Bitta foydalanuvchi xabarlari\n\n' +
+      '<b>❗ Eslatma:</b>\n' +
+      '   Guruh egasi (creator) va botlar xabarlari hech qachon ochilmaydi.';
+
+    await (ctx as any).editMessageText(text, {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Orqaga', callback_data: 'menu:main' }]] },
+    });
+    await (ctx as any).answerCbQuery();
   }
 
   // ─────────────────────── Delete: guruh tanlash ───────────────────────────
 
   @Action('delete:start')
   async onDeleteStart(@Ctx() ctx: Context): Promise<void> {
-    if (String(ctx.from?.id) !== MASTER_ID) {
-      await (ctx as any).answerCbQuery("❌ Ruxsat yoq");
-      return;
-    }
+    const userId = ctx.from!.id;
+    const myGroups = await this.getMyGroups(userId);
 
-    const groups = await this.groupsService.getActiveGroups();
-
-    if (groups.length === 0) {
-      await (ctx as any).editMessageText("❌ Faol guruhlar yoq. Avval botni guruhga qoshing.");
+    if (myGroups.length === 0) {
+      await (ctx as any).editMessageText(
+        '❌ Siz ega bolgan va botni qoshgan guruh yoq.\n\nAvval "➕ Guruhga qoshish" tugmasini bosing.',
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: '⬅️ Orqaga', callback_data: 'menu:main' }]],
+          },
+        },
+      );
       await (ctx as any).answerCbQuery();
       return;
     }
 
-    if (groups.length === 1) {
-      await this.showGroupDeleteMenu(ctx, groups[0].telegramId, groups[0].title);
+    if (myGroups.length === 1) {
+      await this.showGroupDeleteMenu(ctx, Number(myGroups[0].telegramId), myGroups[0].title);
       return;
     }
 
+    // Multiple groups
     const keyboard = [
-      ...groups.map((g) => [{ text: `📋 ${g.title}`, callback_data: `delete:group:${g.telegramId}` }]),
+      ...myGroups.map((g) => [{ text: '📋 ' + g.title, callback_data: 'del:g:' + g.telegramId }]),
       [{ text: '⬅️ Orqaga', callback_data: 'menu:main' }],
     ];
 
     await (ctx as any).editMessageText(
-      '📋 <b>Guruhni tanlang:</b>\n\nQaysi guruh xabarlarini ochirmoqchisiz?',
+      '📋 <b>Guruhni tanlang:</b>',
       { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } },
     );
     await (ctx as any).answerCbQuery();
   }
 
-  @Action(/^delete:group:(.+)$/)
+  @Action(/^del:g:(.+)$/)
   async onDeleteGroupSelect(@Ctx() ctx: Context): Promise<void> {
-    if (String(ctx.from?.id) !== MASTER_ID) { await (ctx as any).answerCbQuery('❌'); return; }
     const cbData = (ctx as any).callbackQuery?.data as string;
-    const groupTelegramId = cbData.replace('delete:group:', '');
+    const groupTelegramId = cbData.replace('del:g:', '');
     const group = await this.groupsService.findByTelegramId(groupTelegramId);
-    if (!group) { await (ctx as any).answerCbQuery('❌ Guruh topilmadi'); return; }
-    await this.showGroupDeleteMenu(ctx, group.telegramId, group.title);
+    if (!group) { await (ctx as any).answerCbQuery('Guruh topilmadi'); return; }
+    await this.showGroupDeleteMenu(ctx, Number(group.telegramId), group.title);
   }
 
   // ─────────────────────── Delete: tur tanlash ─────────────────────────────
 
   private async showGroupDeleteMenu(
     ctx: Context,
-    groupTelegramId: string,
+    groupTelegramId: number,
     groupTitle: string,
   ): Promise<void> {
-    const keyboard = {
-      inline_keyboard: [
-        [{ text: "🗓 Sanadan-sanagacha (hamma)", callback_data: `delete:all:${groupTelegramId}` }],
-        [{ text: '👤 Bitta foydalanuvchi xabarlari', callback_data: `delete:user:${groupTelegramId}` }],
-        [{ text: '⬅️ Orqaga', callback_data: 'delete:start' }],
-      ],
-    };
-
     await (ctx as any).editMessageText(
-      `🗑️ <b>${groupTitle}</b>\n\nQanday xabarlarni ochirmoqchisiz?`,
-      { parse_mode: 'HTML', reply_markup: keyboard },
+      '🗑️ <b>' + groupTitle + '</b>\n\nQanday xabarlarni ochirmoqchisiz?',
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🗓 Sanadan-sanagacha (hammaning xabarlari)", callback_data: 'del:all:' + groupTelegramId }],
+            [{ text: '👤 Bitta foydalanuvchi xabarlari', callback_data: 'del:user:' + groupTelegramId }],
+            [{ text: '⬅️ Orqaga', callback_data: 'delete:start' }],
+          ],
+        },
+      },
     );
     await (ctx as any).answerCbQuery();
   }
 
   // ─────────────────── Delete: sana kiritish (hamma) ───────────────────────
 
-  @Action(/^delete:all:(.+)$/)
+  @Action(/^del:all:(.+)$/)
   async onDeleteAllPrompt(@Ctx() ctx: Context): Promise<void> {
-    if (String(ctx.from?.id) !== MASTER_ID) { await (ctx as any).answerCbQuery('❌'); return; }
     const cbData = (ctx as any).callbackQuery?.data as string;
-    const groupTelegramId = cbData.replace('delete:all:', '');
+    const groupTelegramId = cbData.replace('del:all:', '');
     const group = await this.groupsService.findByTelegramId(groupTelegramId);
 
     this.deleteStates.set(ctx.from!.id, {
@@ -344,15 +380,19 @@ export class TelegramUpdate implements OnModuleInit {
       groupTitle: group?.title ?? 'Guruh',
     });
 
+    const hint = this.mtproto.isReady()
+      ? '✅ MTProto: Har qanday muddatdagi xabarlar ochiriladi.'
+      : '⚠️ Bot API: Faqat 48 soat ichidagi xabarlar ochiriladi (MTProto ulash uchun TELEGRAM_API_ID qoshing).';
+
     await (ctx as any).editMessageText(
-      `🗓 <b>${group?.title ?? 'Guruh'} — sana oraligini kiriting</b>\n\n` +
-        `Format: <code>YYYY-MM-DD YYYY-MM-DD</code>\n\n` +
-        `<b>Misol:</b> <code>2026-01-01 2026-03-05</code>\n\n` +
-        `⚠️ <i>Guruh egasi va botlar xabarlari ochilmaydi.\n` +
-        `Oddiy adminlar va barcha boshqa foydalanuvchilar xabarlari ochiriladi.</i>`,
+      '🗓 <b>' + (group?.title ?? 'Guruh') + ' — sana oraligini kiriting</b>\n\n' +
+      'Format: <code>YYYY-MM-DD YYYY-MM-DD</code>\n' +
+      'Misol: <code>2026-01-01 2026-03-05</code>\n\n' +
+      hint + '\n\n' +
+      '⛔ <i>Guruh egasi va botlar xabarlari hech qachon ochilmaydi.</i>',
       {
         parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [[{ text: '❌ Bekor qilish', callback_data: 'delete:cancel' }]] },
+        reply_markup: { inline_keyboard: [[{ text: '❌ Bekor qilish', callback_data: 'del:cancel' }]] },
       },
     );
     await (ctx as any).answerCbQuery();
@@ -360,11 +400,10 @@ export class TelegramUpdate implements OnModuleInit {
 
   // ─────────────── Delete: sana + username kiritish ────────────────────────
 
-  @Action(/^delete:user:(.+)$/)
+  @Action(/^del:user:(.+)$/)
   async onDeleteUserPrompt(@Ctx() ctx: Context): Promise<void> {
-    if (String(ctx.from?.id) !== MASTER_ID) { await (ctx as any).answerCbQuery('❌'); return; }
     const cbData = (ctx as any).callbackQuery?.data as string;
-    const groupTelegramId = cbData.replace('delete:user:', '');
+    const groupTelegramId = cbData.replace('del:user:', '');
     const group = await this.groupsService.findByTelegramId(groupTelegramId);
 
     this.deleteStates.set(ctx.from!.id, {
@@ -373,29 +412,33 @@ export class TelegramUpdate implements OnModuleInit {
       groupTitle: group?.title ?? 'Guruh',
     });
 
+    const hint = this.mtproto.isReady()
+      ? '✅ MTProto: Har qanday muddatdagi xabarlar ochiriladi.'
+      : '⚠️ Bot API: Faqat 48 soat ichidagi xabarlar ochiriladi.';
+
     await (ctx as any).editMessageText(
-      `👤 <b>${group?.title ?? 'Guruh'} — bitta foydalanuvchi xabarlari</b>\n\n` +
-        `Format: <code>@username YYYY-MM-DD YYYY-MM-DD</code>\n\n` +
-        `<b>Misol:</b> <code>@john 2026-01-01 2026-03-05</code>\n\n` +
-        `⚠️ <i>Guruh egasining xabarlari hech qachon ochilmaydi.</i>`,
+      '👤 <b>' + (group?.title ?? 'Guruh') + ' — bitta foydalanuvchi xabarlari</b>\n\n' +
+      'Format: <code>@username YYYY-MM-DD YYYY-MM-DD</code>\n' +
+      'Misol: <code>@john 2026-01-01 2026-03-05</code>\n\n' +
+      hint + '\n\n' +
+      '⛔ <i>Guruh egasining xabarlari hech qachon ochilmaydi.</i>',
       {
         parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [[{ text: '❌ Bekor qilish', callback_data: 'delete:cancel' }]] },
+        reply_markup: { inline_keyboard: [[{ text: '❌ Bekor qilish', callback_data: 'del:cancel' }]] },
       },
     );
     await (ctx as any).answerCbQuery();
   }
 
-  // ─────────────────────── Delete: bekor qilish ────────────────────────────
-
-  @Action('delete:cancel')
+  @Action('del:cancel')
   async onDeleteCancel(@Ctx() ctx: Context): Promise<void> {
     if (ctx.from) this.deleteStates.delete(ctx.from.id);
     await (ctx as any).editMessageText('❌ Bekor qilindi.');
-    await (ctx as any).answerCbQuery();
+    try { await (ctx as any).answerCbQuery(); } catch {}
+    setTimeout(async () => { try { await this.sendMainMenu(ctx, true); } catch {} }, 1500);
   }
 
-  // ────────────── Matn kiritish — delete flow handler ─────────────────────
+  // ────────────── Matn kiritish — delete flow ──────────────────────────────
 
   private async handleDeleteInput(
     ctx: Context,
@@ -407,40 +450,28 @@ export class TelegramUpdate implements OnModuleInit {
     if (state.step === 'awaiting_date') {
       const match = text.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})$/);
       if (!match) {
-        await ctx.reply(
-          "❌ Format notogri.\n\nMisol: <code>2026-01-01 2026-03-05</code>",
-          { parse_mode: 'HTML' },
-        );
+        await ctx.reply('❌ Format notogri.\n\nMisol: <code>2026-01-01 2026-03-05</code>', { parse_mode: 'HTML' });
         return;
       }
-      const fromDate = new Date(`${match[1]}T00:00:00.000Z`);
-      const toDate = new Date(`${match[2]}T23:59:59.999Z`);
-      if (fromDate > toDate) {
-        await ctx.reply("❌ Boshlanish sanasi tugash sanasidan oldin bolishi kerak.");
-        return;
-      }
+      const from = new Date(match[1] + 'T00:00:00.000Z');
+      const to = new Date(match[2] + 'T23:59:59.999Z');
+      if (from > to) { await ctx.reply('❌ Boshlanish sanasi tugash sanasidan oldin bolishi kerak.'); return; }
       this.deleteStates.delete(userId);
-      await this.executeDelete(ctx, state.groupTelegramId, state.groupTitle, fromDate, toDate, null);
+      await this.executeDelete(ctx, state.groupTelegramId, state.groupTitle, from, to, null);
       return;
     }
 
     if (state.step === 'awaiting_user_date') {
       const match = text.trim().match(/^(@?\w+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})$/);
       if (!match) {
-        await ctx.reply(
-          "❌ Format notogri.\n\nMisol: <code>@john 2026-01-01 2026-03-05</code>",
-          { parse_mode: 'HTML' },
-        );
+        await ctx.reply('❌ Format notogri.\n\nMisol: <code>@john 2026-01-01 2026-03-05</code>', { parse_mode: 'HTML' });
         return;
       }
-      const fromDate = new Date(`${match[2]}T00:00:00.000Z`);
-      const toDate = new Date(`${match[3]}T23:59:59.999Z`);
-      if (fromDate > toDate) {
-        await ctx.reply("❌ Boshlanish sanasi tugash sanasidan oldin bolishi kerak.");
-        return;
-      }
+      const from = new Date(match[2] + 'T00:00:00.000Z');
+      const to = new Date(match[3] + 'T23:59:59.999Z');
+      if (from > to) { await ctx.reply('❌ Boshlanish sanasi tugash sanasidan oldin bolishi kerak.'); return; }
       this.deleteStates.delete(userId);
-      await this.executeDelete(ctx, state.groupTelegramId, state.groupTitle, fromDate, toDate, match[1]);
+      await this.executeDelete(ctx, state.groupTelegramId, state.groupTitle, from, to, match[1]);
     }
   }
 
@@ -455,135 +486,111 @@ export class TelegramUpdate implements OnModuleInit {
     username: string | null,
   ): Promise<void> {
     const progressMsg = await ctx.reply(
-      `🔍 <b>${groupTitle}</b>\n\nXabarlar qidirilmoqda...`,
+      '🔍 <b>' + groupTitle + '</b>\n\nXabarlar qidirilmoqda...',
       { parse_mode: 'HTML' },
     );
+    const chatId = ctx.chat!.id;
+    const progressId = (progressMsg as any).message_id;
 
     try {
-      // Get group OWNER id from Telegram (exclude their messages)
+      // Get group OWNER to exclude their messages
       let ownerTelegramId: string | null = null;
       try {
         const admins = await this.bot.telegram.getChatAdministrators(groupTelegramId);
         const owner = admins.find((a) => a.status === 'creator');
         if (owner) ownerTelegramId = String(owner.user.id);
-      } catch (err) {
-        this.logger.warn(`Could not get admins for group ${groupTelegramId}`, err);
-      }
+      } catch {}
 
-      // Resolve username to telegramUserId
+      // Resolve username
       let targetTelegramId: string | undefined;
       if (username) {
         const uname = username.startsWith('@') ? username.slice(1) : username;
         const user = await this.usersService.findByUsername(uname);
         if (!user) {
-          await this.bot.telegram.editMessageText(
-            ctx.chat!.id,
-            (progressMsg as any).message_id,
-            undefined,
-            `❌ @${uname} foydalanuvchisi topilmadi.\n\nFoydalanuvchi guruhda xabar yozgan bolishi kerak.`,
-          );
+          await this.bot.telegram.editMessageText(chatId, progressId, undefined,
+            '❌ @' + uname + ' foydalanuvchisi topilmadi.\n\nFoydalanuvchi guruhda xabar yozgan bolishi kerak.');
           return;
         }
         targetTelegramId = user.telegramId;
-
-        // Cannot delete owner messages even by username
         if (ownerTelegramId && targetTelegramId === ownerTelegramId) {
-          await this.bot.telegram.editMessageText(
-            ctx.chat!.id,
-            (progressMsg as any).message_id,
-            undefined,
-            `⛔ Guruh egasining xabarlarini ochirish mumkin emas.`,
-          );
+          await this.bot.telegram.editMessageText(chatId, progressId, undefined,
+            '⛔ Guruh egasining xabarlarini ochirish mumkin emas.');
           return;
         }
       }
 
-      // Fetch messages from DB
+      // Get messages from DB
       const messages = await this.messagesService.getMessagesByDateRange(
-        groupTelegramId,
-        fromDate,
-        toDate,
-        targetTelegramId,
+        groupTelegramId, fromDate, toDate, targetTelegramId,
       );
 
-      // Filter: exclude owner messages
-      const toDeleteMessages = messages.filter((m) => {
-        if (ownerTelegramId && String(m.telegramUserId) === ownerTelegramId) return false;
-        return true;
-      });
+      // Exclude owner messages
+      const toDelete = messages.filter(
+        (m) => !(ownerTelegramId && String(m.telegramUserId) === ownerTelegramId),
+      );
 
-      if (toDeleteMessages.length === 0) {
-        const rangeStr = `${fromDate.toISOString().slice(0, 10)} — ${toDate.toISOString().slice(0, 10)}`;
-        await this.bot.telegram.editMessageText(
-          ctx.chat!.id,
-          (progressMsg as any).message_id,
-          undefined,
+      if (toDelete.length === 0) {
+        const range = fromDate.toISOString().slice(0, 10) + ' — ' + toDate.toISOString().slice(0, 10);
+        await this.bot.telegram.editMessageText(chatId, progressId, undefined,
           username
-            ? `ℹ️ ${username} foydalanuvchisining <b>${rangeStr}</b> oraliqdagi xabarlari topilmadi.`
-            : `ℹ️ <b>${rangeStr}</b> oraliqdagi xabarlar topilmadi.`,
-          { parse_mode: 'HTML' },
-        );
+            ? 'ℹ️ ' + username + ' foydalanuvchisining <b>' + range + '</b> oraliqdagi xabarlari topilmadi.'
+            : 'ℹ️ <b>' + range + '</b> oraliqdagi ochiriladigan xabarlar topilmadi.',
+          { parse_mode: 'HTML' });
         return;
       }
 
-      await this.bot.telegram.editMessageText(
-        ctx.chat!.id,
-        (progressMsg as any).message_id,
-        undefined,
-        `🗑️ <b>${toDeleteMessages.length}</b> ta xabar ochirilmoqda...\n<i>Iltimos kuting.</i>`,
-        { parse_mode: 'HTML' },
-      );
+      await this.bot.telegram.editMessageText(chatId, progressId, undefined,
+        '🗑️ <b>' + toDelete.length + '</b> ta xabar ochirilmoqda...\n<i>Iltimos kuting.</i>',
+        { parse_mode: 'HTML' });
 
-      // Delete in batches of 100
+      const messageIds = toDelete.map((m) => Number(m.telegramMessageId));
+      const dbIdsMap: Record<number, number> = {};
+      for (const m of toDelete) dbIdsMap[Number(m.telegramMessageId)] = m.id;
+
       let deleted = 0;
       let failed = 0;
-      const dbIds: number[] = [];
-      const dbIdsMap: Record<number, number> = {};
-      for (const m of toDeleteMessages) dbIdsMap[Number(m.telegramMessageId)] = m.id;
 
-      const messageIds = toDeleteMessages.map((m) => Number(m.telegramMessageId));
-      const BATCH_SIZE = 100;
-
-      for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
-        const batch = messageIds.slice(i, i + BATCH_SIZE);
-        try {
-          await this.bot.telegram.deleteMessages(groupTelegramId, batch);
-          deleted += batch.length;
-          dbIds.push(...batch.map((tid) => dbIdsMap[tid]).filter(Boolean));
-        } catch {
-          for (const tid of batch) {
-            try {
-              await this.bot.telegram.deleteMessage(groupTelegramId, tid);
-              deleted++;
-              if (dbIdsMap[tid]) dbIds.push(dbIdsMap[tid]);
-            } catch { failed++; }
+      // ─── MTProto (no 48h limit) ────────────────────────────────────
+      if (this.mtproto.isReady()) {
+        const result = await this.mtproto.deleteMessages(groupTelegramId, messageIds);
+        deleted = result.deleted;
+        failed = result.failed;
+      } else {
+        // ─── Bot API fallback (48h limit) ──────────────────────────
+        const BATCH = 100;
+        for (let i = 0; i < messageIds.length; i += BATCH) {
+          const batch = messageIds.slice(i, i + BATCH);
+          try {
+            await this.bot.telegram.deleteMessages(groupTelegramId, batch);
+            deleted += batch.length;
+          } catch {
+            for (const id of batch) {
+              try { await this.bot.telegram.deleteMessage(groupTelegramId, id); deleted++; }
+              catch { failed++; }
+            }
           }
-        }
-        if (i + BATCH_SIZE < messageIds.length) {
-          await new Promise((r) => setTimeout(r, 500));
+          if (i + BATCH < messageIds.length) await new Promise((r) => setTimeout(r, 500));
         }
       }
 
-      if (dbIds.length) await this.messagesService.deleteMessagesFromDb(dbIds);
+      // Clean DB
+      const deletedDbIds = messageIds.slice(0, deleted).map((id) => dbIdsMap[id]).filter(Boolean);
+      if (deletedDbIds.length) await this.messagesService.deleteMessagesFromDb(deletedDbIds);
 
-      const rangeStr = `${fromDate.toISOString().slice(0, 10)} — ${toDate.toISOString().slice(0, 10)}`;
+      const range = fromDate.toISOString().slice(0, 10) + ' — ' + toDate.toISOString().slice(0, 10);
+      const mode = this.mtproto.isReady() ? '🟢 MTProto' : '🟡 Bot API';
       const summary = username
-        ? `✅ <b>${groupTitle}</b>\n\n${username} foydalanuvchisining <b>${deleted}</b> ta xabari ochirildi.\n📅 Davr: ${rangeStr}` +
-          (failed ? `\n⚠️ ${failed} ta xabar ochirilmadi.` : '')
-        : `✅ <b>${groupTitle}</b>\n\n<b>${deleted}</b> ta xabar ochirildi.\n📅 Davr: ${rangeStr}` +
-          (failed ? `\n⚠️ ${failed} ta xabar ochirilmadi.` : '');
+        ? '✅ <b>' + groupTitle + '</b>\n\n' + username + ' foydalanuvchisining <b>' + deleted + '</b> ta xabari ochirildi.\n📅 ' + range + '\n' + mode
+        : '✅ <b>' + groupTitle + '</b>\n\n<b>' + deleted + '</b> ta xabar ochirildi.\n📅 ' + range + '\n' + mode;
 
-      await this.bot.telegram.editMessageText(
-        ctx.chat!.id,
-        (progressMsg as any).message_id,
-        undefined,
-        summary,
+      await this.bot.telegram.editMessageText(chatId, progressId, undefined,
+        summary + (failed ? '\n⚠️ ' + failed + ' ta xabar ochirilmadi (eski yoki mavjud emas).' : ''),
         {
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "🔄 Yana ochirish", callback_data: 'delete:start' },
+                { text: "🔄 Yana o'chirish", callback_data: 'delete:start' },
                 { text: '🏠 Bosh menyu', callback_data: 'menu:main' },
               ],
             ],
