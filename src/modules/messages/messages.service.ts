@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 import { Message } from './entities/message.entity';
 import { GroupsService } from '../groups/groups.service';
 import { UsersService } from '../users/users.service';
@@ -72,6 +72,11 @@ export class MessagesService {
 
   async deleteMessagesFromDb(ids: number[]): Promise<void> {
     if (!ids.length) return;
-    await this.messageRepo.delete(ids);
+    // Delete in chunks to avoid "too many bind variables" on large sets
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      await this.messageRepo.delete({ id: In(chunk) });
+    }
   }
 }

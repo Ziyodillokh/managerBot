@@ -563,6 +563,7 @@ export class TelegramUpdate implements OnModuleInit {
       await edit(t.deleting(toDelete.length));
 
       const messageIds = toDelete.map((m) => Number(m.telegramMessageId));
+      // Map telegramMessageId → DB row id (for cleanup)
       const dbIdMap: Record<number, number> = {};
       for (const m of toDelete) dbIdMap[Number(m.telegramMessageId)] = m.id;
 
@@ -575,25 +576,44 @@ export class TelegramUpdate implements OnModuleInit {
         deleted = result.deleted;
         failed = result.failed;
       } else {
-        // ── Bot API fallback ─────────────────────────────────────────────
+        // ── Bot API fallback (48h limit applies) ─────────────────────────
         const BATCH = 100;
         for (let i = 0; i < messageIds.length; i += BATCH) {
           const batch = messageIds.slice(i, i + BATCH);
           try {
-            await this.bot.telegram.deleteMessages(groupTelegramId, batch);
+            // deleteMessages bulk — Telegram Bot API 7.0+
+            await (this.bot.telegram as any).deleteMessages(groupTelegramId, batch);
             deleted += batch.length;
           } catch {
+            // Fallback: one by one
             for (const id of batch) {
-              try { await this.bot.telegram.deleteMessage(groupTelegramId, id); deleted++; }
-              catch { failed++; }
+              try {
+                await this.bot.telegram.deleteMessage(groupTelegramId, id);
+                deleted++;
+              } catch {
+                failed++;
+              }
             }
           }
-          if (i + BATCH < messageIds.length) await new Promise((r) => setTimeout(r, 400));
+          // Progress update every 500 messages
+          if (i > 0 && i % 500 === 0) {
+            try {
+              await this.bot.telegram.editMessageText(
+                chatId, progressId, undefined,
+                t.deleting(toDelete.length) + `\n⬛ ${i}/${toDelete.length}`,
+                { parse_mode: 'HTML' },
+              );
+            } catch {}
+          }
+          if (i + BATCH < messageIds.length) await new Promise((r) => setTimeout(r, 350));
         }
       }
 
-      // ── Clean DB ─────────────────────────────────────────────────────────
-      const dbIds = messageIds.slice(0, deleted).map((id) => dbIdMap[id]).filter(Boolean);
+      // ── Clean DB (remove ALL attempted messages — deleted or already gone) ──
+      // We remove all, because:
+      //   • Successfully deleted → obviously should be removed
+      //   • "Failed" ones with MESSAGE_ID_INVALID → already deleted on Telegram
+      const dbIds = messageIds.map((id) => dbIdMap[id]).filter(Boolean);
       if (dbIds.length) await this.messagesService.deleteMessagesFromDb(dbIds);
 
       // ── Result summary ───────────────────────────────────────────────────
