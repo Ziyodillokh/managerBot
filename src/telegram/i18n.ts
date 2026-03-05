@@ -18,7 +18,7 @@ export const T = {
     langBtn: '🌐 Til',
     // MTProto status
     mtOn: '🟢 MTProto: Faol (cheksiz muddat)',
-    mtOff: '🟡 Bot API: Faqat so\'nggi 48 soat',
+    mtOff: "🟡 Bot API: Faqat so'nggi 48 soat",
     // Main menu
     menuNoGroups: (status: string) =>
       `🛡 <b>Guardy Bot</b>\n\n${status}\n\nHozircha siz ega bo'lgan faol guruh yo'q.\n\nBotni guruhga qo'shing (siz o'sha guruhning <b>egasi (creator)</b> bo'lishingiz kerak) va admin huquqlarini bering:`,
@@ -36,46 +36,62 @@ export const T = {
     // Help
     helpText:
       '❓ <b>Yordam</b>\n\n' +
-      '<b>1. Botni guruhga qo\'shing</b>\n' +
+      "<b>1. Botni guruhga qo'shing</b>\n" +
       '   • "➕ Guruhga qo\'shish" tugmasini bosing\n' +
-      '   • Faqat siz <b>ega (creator)</b> bo\'lgan guruhlar ishlaydi\n\n' +
+      "   • Faqat siz <b>ega (creator)</b> bo'lgan guruhlar ishlaydi\n\n" +
       '<b>2. Botga admin huquqi bering</b>\n' +
       '   ✅ "Delete messages" huquqi kerak\n\n' +
-      '<b>3. Xabar o\'chirish turlari:</b>\n' +
+      "<b>3. Xabar o'chirish turlari:</b>\n" +
       '   🗓 Sana oraligida — barcha foydalanuvchilar\n' +
       '   👤 Bitta foydalanuvchi xabarlari\n\n' +
       '<b>❗ Eslatma:</b>\n' +
-      '   Guruh egasi va botlar xabarlari <b>hech qachon</b> o\'chirilmaydi.',
+      "   Guruh egasi va botlar xabarlari <b>hech qachon</b> o'chirilmaydi.",
     // Delete flow
     selectGroup: '📋 <b>Guruhni tanlang:</b>',
-    noGroups: '❌ Siz ega bo\'lgan va bot qo\'shilgan guruh yo\'q.\n\nAvval "➕ Guruhga qo\'shish" tugmasini bosing.',
-    deleteType: (group: string) => `🗑️ <b>${group}</b>\n\nQanday xabarlarni o'chirmoqchisiz?`,
+    noGroups:
+      "❌ Siz ega bo'lgan va bot qo'shilgan guruh yo'q.\n\nAvval \"➕ Guruhga qo'shish\" tugmasini bosing.",
+    deleteType: (group: string) =>
+      `🗑️ <b>${group}</b>\n\nQanday xabarlarni o'chirmoqchisiz?`,
     btnAllMsgs: '🗓 Sana oraligida (hammaning xabarlari)',
     btnUserMsgs: '👤 Bitta foydalanuvchi xabarlari',
     inputAllDate: (group: string, hint: string) =>
       `🗓 <b>${group} — sana oraligini kiriting</b>\n\nFormat: <code>YYYY-MM-DD YYYY-MM-DD</code>\nMisol: <code>2026-01-01 2026-03-05</code>\n\n${hint}\n\n⛔ <i>Guruh egasi va botlar xabarlari hech qachon o'chirilmaydi.</i>`,
     inputUserDate: (group: string, hint: string) =>
       `👤 <b>${group} — foydalanuvchi xabarlari</b>\n\nFormat: <code>@username YYYY-MM-DD YYYY-MM-DD</code>\nMisol: <code>@john 2026-01-01 2026-03-05</code>\n\n${hint}\n\n⛔ <i>Guruh egasining xabarlari hech qachon o'chirilmaydi.</i>`,
-    mtHintOn: '✅ MTProto: Har qanday muddatdagi xabarlar o\'chiriladi.',
-    mtHintOff: '⚠️ Bot API: Faqat oxirgi 48 soatdagi xabarlar (muddatsiz rejim uchun TELEGRAM_SESSION qo\'shing).',
+    mtHintOn: "✅ MTProto: Har qanday muddatdagi xabarlar o'chiriladi.",
+    mtHintOff:
+      "⚠️ Bot API: Faqat oxirgi 48 soatdagi xabarlar (muddatsiz rejim uchun TELEGRAM_SESSION qo'shing).",
     cancelled: '❌ Bekor qilindi.',
-    searching: (group: string) => `🔍 <b>${group}</b>\n\nXabarlar qidirilmoqda...`,
-    deleting: (count: number) => `🗑️ <b>${count}</b> ta xabar o'chirilmoqda...\n<i>Iltimos kuting.</i>`,
-    notFound: (range: string) => `ℹ️ <b>${range}</b> oraliqdagi o'chiriladigan xabarlar topilmadi.`,
-    notFoundUser: (username: string, range: string) => `ℹ️ ${username} foydalanuvchisining <b>${range}</b> oraliqdagi xabarlari topilmadi.`,
-    userNotFound: (uname: string) => `❌ @${uname} foydalanuvchisi topilmadi.\n\nFoydalanuvchi guruhda xabar yozgan bo'lishi kerak.`,
-    ownerProtected: '⛔ Guruh egasining xabarlarini o\'chirish mumkin emas.',
+    searching: (group: string) =>
+      `🔍 <b>${group}</b>\n\nXabarlar qidirilmoqda...`,
+    deleting: (count: number) =>
+      `🗑️ <b>${count}</b> ta xabar o'chirilmoqda...\n<i>Iltimos kuting.</i>`,
+    notFound: (range: string) =>
+      `ℹ️ <b>${range}</b> oraliqdagi o'chiriladigan xabarlar topilmadi.`,
+    notFoundUser: (username: string, range: string) =>
+      `ℹ️ ${username} foydalanuvchisining <b>${range}</b> oraliqdagi xabarlari topilmadi.`,
+    userNotFound: (uname: string) =>
+      `❌ @${uname} foydalanuvchisi topilmadi.\n\nFoydalanuvchi guruhda xabar yozgan bo'lishi kerak.`,
+    ownerProtected: "⛔ Guruh egasining xabarlarini o'chirish mumkin emas.",
     resultAll: (group: string, deleted: number, range: string, mode: string) =>
       `✅ <b>${group}</b>\n\n<b>${deleted}</b> ta xabar o'chirildi.\n📅 ${range}\n${mode}`,
-    resultUser: (group: string, username: string, deleted: number, range: string, mode: string) =>
+    resultUser: (
+      group: string,
+      username: string,
+      deleted: number,
+      range: string,
+      mode: string,
+    ) =>
       `✅ <b>${group}</b>\n\n${username} — <b>${deleted}</b> ta xabar o'chirildi.\n📅 ${range}\n${mode}`,
-    failedSome: (n: number) => `\n⚠️ ${n} ta xabar o'chirilmadi (allaqachon o'chirilgan yoki eski).`,
+    failedSome: (n: number) =>
+      `\n⚠️ ${n} ta xabar o'chirilmadi (allaqachon o'chirilgan yoki eski).`,
     groupNotFound: '❌ Guruh topilmadi.',
-    error: '❌ Xatolik yuz berdi. Qayta urinib ko\'ring.',
+    error: "❌ Xatolik yuz berdi. Qayta urinib ko'ring.",
     badDateFormat: 'Misol: <code>2026-01-01 2026-03-05</code>',
     badUserDateFormat: 'Misol: <code>@john 2026-01-01 2026-03-05</code>',
-    dateOrderError: '❌ Boshlanish sanasi tugash sanasidan oldin bo\'lishi kerak.',
-    badFormat: '❌ Format noto\'g\'ri.\n\n',
+    dateOrderError:
+      "❌ Boshlanish sanasi tugash sanasidan oldin bo'lishi kerak.",
+    badFormat: "❌ Format noto'g'ri.\n\n",
     notOwner: (title: string) =>
       `<b>❌ Xato!</b>\n\nSiz <b>${title}</b> guruhining egasi emassiz.\n\nBot faqat siz ega bo'lgan guruhlarda ishlaydi. Guruhdan chiqyapman.`,
     noAdminRights: (title: string) =>
@@ -84,6 +100,12 @@ export const T = {
       `✅ <b>${title}</b> guruhiga muvaffaqiyatli qo'shildim!\n\nEndi /start buyrug'i orqali xabarlarni boshqarishingiz mumkin.`,
     mtMode: '🟢 MTProto (cheksiz)',
     botApiMode: '🟡 Bot API (48s)',
+    // Session not a member of this group
+    notMemberWarning:
+      "⚠️ <b>Diqqat:</b> MTProto sessiyasi bu guruhning a'zosi emas.\n\n" +
+      "🟡 <b>DB rejimiga o'tildi</b> — faqat bot faol bo'lgan davrdan beri\n" +
+      "yig'ilgan xabarlar o'chiriladi (48s limiti bor).\n\n" +
+      "<i>MTProto bilan eski xabarlarni o'chirish uchun session egasi ham guruh a'zosi bo'lishi kerak.</i>",
   },
 
   ru: {
@@ -117,8 +139,10 @@ export const T = {
       '<b>❗ Важно:</b>\n' +
       '   Сообщения создателя группы и ботов <b>никогда</b> не удаляются.',
     selectGroup: '📋 <b>Выберите группу:</b>',
-    noGroups: '❌ Нет групп, где вы создатель и добавлен бот.\n\nНажмите "➕ Добавить в группу".',
-    deleteType: (group: string) => `🗑️ <b>${group}</b>\n\nКакие сообщения удалить?`,
+    noGroups:
+      '❌ Нет групп, где вы создатель и добавлен бот.\n\nНажмите "➕ Добавить в группу".',
+    deleteType: (group: string) =>
+      `🗑️ <b>${group}</b>\n\nКакие сообщения удалить?`,
     btnAllMsgs: '🗓 По диапазону дат (все пользователи)',
     btnUserMsgs: '👤 Сообщения одного пользователя',
     inputAllDate: (group: string, hint: string) =>
@@ -126,19 +150,31 @@ export const T = {
     inputUserDate: (group: string, hint: string) =>
       `👤 <b>${group} — сообщения пользователя</b>\n\nФормат: <code>@username YYYY-MM-DD YYYY-MM-DD</code>\nПример: <code>@john 2026-01-01 2026-03-05</code>\n\n${hint}\n\n⛔ <i>Сообщения создателя группы не удаляются.</i>`,
     mtHintOn: '✅ MTProto: Удаляет сообщения любой давности.',
-    mtHintOff: '⚠️ Bot API: Только последние 48 ч (добавьте TELEGRAM_SESSION для снятия ограничений).',
+    mtHintOff:
+      '⚠️ Bot API: Только последние 48 ч (добавьте TELEGRAM_SESSION для снятия ограничений).',
     cancelled: '❌ Отменено.',
     searching: (group: string) => `🔍 <b>${group}</b>\n\nПоиск сообщений...`,
-    deleting: (count: number) => `🗑️ Удаляется <b>${count}</b> сообщений...\n<i>Пожалуйста, подождите.</i>`,
-    notFound: (range: string) => `ℹ️ Нет сообщений для удаления за <b>${range}</b>.`,
-    notFoundUser: (username: string, range: string) => `ℹ️ Сообщений от ${username} за <b>${range}</b> не найдено.`,
-    userNotFound: (uname: string) => `❌ Пользователь @${uname} не найден.\n\nПользователь должен был написать сообщение в группе.`,
+    deleting: (count: number) =>
+      `🗑️ Удаляется <b>${count}</b> сообщений...\n<i>Пожалуйста, подождите.</i>`,
+    notFound: (range: string) =>
+      `ℹ️ Нет сообщений для удаления за <b>${range}</b>.`,
+    notFoundUser: (username: string, range: string) =>
+      `ℹ️ Сообщений от ${username} за <b>${range}</b> не найдено.`,
+    userNotFound: (uname: string) =>
+      `❌ Пользователь @${uname} не найден.\n\nПользователь должен был написать сообщение в группе.`,
     ownerProtected: '⛔ Нельзя удалять сообщения создателя группы.',
     resultAll: (group: string, deleted: number, range: string, mode: string) =>
       `✅ <b>${group}</b>\n\nУдалено <b>${deleted}</b> сообщений.\n📅 ${range}\n${mode}`,
-    resultUser: (group: string, username: string, deleted: number, range: string, mode: string) =>
+    resultUser: (
+      group: string,
+      username: string,
+      deleted: number,
+      range: string,
+      mode: string,
+    ) =>
       `✅ <b>${group}</b>\n\n${username} — удалено <b>${deleted}</b> сообщений.\n📅 ${range}\n${mode}`,
-    failedSome: (n: number) => `\n⚠️ ${n} сообщений не удалось удалить (уже удалены или слишком старые).`,
+    failedSome: (n: number) =>
+      `\n⚠️ ${n} сообщений не удалось удалить (уже удалены или слишком старые).`,
     groupNotFound: '❌ Группа не найдена.',
     error: '❌ Произошла ошибка. Попробуйте снова.',
     badDateFormat: 'Пример: <code>2026-01-01 2026-03-05</code>',
@@ -153,6 +189,11 @@ export const T = {
       `✅ Успешно добавлен в <b>${title}</b>!\n\nТеперь используйте /start для управления сообщениями.`,
     mtMode: '🟢 MTProto (без лимита)',
     botApiMode: '🟡 Bot API (48ч)',
+    notMemberWarning:
+      '⚠️ <b>Внимание:</b> MTProto сессия не является участником этой группы.\n\n' +
+      '🟡 <b>Переключено на DB режим</b> — удаляются только сообщения,\n' +
+      'собранные ботом с момента его добавления (лимит 48ч).\n\n' +
+      '<i>Для удаления старых сообщений через MTProto владелец сессии должен быть участником группы.</i>',
   },
 
   en: {
@@ -186,8 +227,10 @@ export const T = {
       '<b>❗ Note:</b>\n' +
       '   Group owner and bot messages are <b>never</b> deleted.',
     selectGroup: '📋 <b>Select a group:</b>',
-    noGroups: '❌ No groups where you are owner and bot is added.\n\nPress "➕ Add to group" first.',
-    deleteType: (group: string) => `🗑️ <b>${group}</b>\n\nWhat messages do you want to delete?`,
+    noGroups:
+      '❌ No groups where you are owner and bot is added.\n\nPress "➕ Add to group" first.',
+    deleteType: (group: string) =>
+      `🗑️ <b>${group}</b>\n\nWhat messages do you want to delete?`,
     btnAllMsgs: '🗓 Date range (all users)',
     btnUserMsgs: '👤 Single user messages',
     inputAllDate: (group: string, hint: string) =>
@@ -195,19 +238,31 @@ export const T = {
     inputUserDate: (group: string, hint: string) =>
       `👤 <b>${group} — user messages</b>\n\nFormat: <code>@username YYYY-MM-DD YYYY-MM-DD</code>\nExample: <code>@john 2026-01-01 2026-03-05</code>\n\n${hint}\n\n⛔ <i>Group owner messages are never deleted.</i>`,
     mtHintOn: '✅ MTProto: Deletes messages of any age — no 48h limit.',
-    mtHintOff: '⚠️ Bot API: Only last 48 hours (add TELEGRAM_SESSION to remove limit).',
+    mtHintOff:
+      '⚠️ Bot API: Only last 48 hours (add TELEGRAM_SESSION to remove limit).',
     cancelled: '❌ Cancelled.',
     searching: (group: string) => `🔍 <b>${group}</b>\n\nSearching messages...`,
-    deleting: (count: number) => `🗑️ Deleting <b>${count}</b> messages...\n<i>Please wait.</i>`,
-    notFound: (range: string) => `ℹ️ No messages found to delete for <b>${range}</b>.`,
-    notFoundUser: (username: string, range: string) => `ℹ️ No messages from ${username} found for <b>${range}</b>.`,
-    userNotFound: (uname: string) => `❌ User @${uname} not found.\n\nUser must have sent a message in the group.`,
+    deleting: (count: number) =>
+      `🗑️ Deleting <b>${count}</b> messages...\n<i>Please wait.</i>`,
+    notFound: (range: string) =>
+      `ℹ️ No messages found to delete for <b>${range}</b>.`,
+    notFoundUser: (username: string, range: string) =>
+      `ℹ️ No messages from ${username} found for <b>${range}</b>.`,
+    userNotFound: (uname: string) =>
+      `❌ User @${uname} not found.\n\nUser must have sent a message in the group.`,
     ownerProtected: '⛔ Cannot delete messages from the group owner.',
     resultAll: (group: string, deleted: number, range: string, mode: string) =>
       `✅ <b>${group}</b>\n\n<b>${deleted}</b> messages deleted.\n📅 ${range}\n${mode}`,
-    resultUser: (group: string, username: string, deleted: number, range: string, mode: string) =>
+    resultUser: (
+      group: string,
+      username: string,
+      deleted: number,
+      range: string,
+      mode: string,
+    ) =>
       `✅ <b>${group}</b>\n\n${username} — <b>${deleted}</b> messages deleted.\n📅 ${range}\n${mode}`,
-    failedSome: (n: number) => `\n⚠️ ${n} messages could not be deleted (already removed or too old).`,
+    failedSome: (n: number) =>
+      `\n⚠️ ${n} messages could not be deleted (already removed or too old).`,
     groupNotFound: '❌ Group not found.',
     error: '❌ An error occurred. Please try again.',
     badDateFormat: 'Example: <code>2026-01-01 2026-03-05</code>',
@@ -222,12 +277,20 @@ export const T = {
       `✅ Successfully added to <b>${title}</b>!\n\nNow use /start to manage messages.`,
     mtMode: '🟢 MTProto (unlimited)',
     botApiMode: '🟡 Bot API (48h)',
+    notMemberWarning:
+      '⚠️ <b>Notice:</b> MTProto session is not a member of this group.\n\n' +
+      '🟡 <b>Switched to DB mode</b> — only messages collected by the bot\n' +
+      'since it was added will be deleted (48h limit applies).\n\n' +
+      '<i>To delete old messages via MTProto, the session account must be a member of the group.</i>',
   },
 } as const;
 
 export type Translations = typeof T.uz;
 
 /** Helper: get translation with fallback to Uzbek */
-export function tr(lang: Lang, key: keyof Translations): Translations[typeof key] {
+export function tr(
+  lang: Lang,
+  key: keyof Translations,
+): Translations[typeof key] {
   return (T[lang] as any)[key] ?? (T.uz as any)[key];
 }

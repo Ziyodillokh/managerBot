@@ -680,57 +680,62 @@ export class TelegramUpdate implements OnModuleInit {
           targetNumericId,
           excludeIds,
           async (found, done) => {
-            await edit(
-              t.deleting(found) + `\n⬛ ${done}/${found}`,
-            );
+            await edit(t.deleting(found) + `\n⬛ ${done}/${found}`);
           },
         );
 
-        if (result.total === 0) {
+        if (result.notMember) {
+          // Session user is not a member of this group →
+          // show warning and fall through to Strategy B (DB fallback)
+          await edit(t.notMemberWarning);
+          await new Promise((r) => setTimeout(r, 1500));
+          // intentionally no `return` — falls through to Strategy B below
+        } else if (result.total === 0) {
           await edit(username ? t.notFoundUser(username, r) : t.notFound(r));
           return;
-        }
+        } else {
+          // MTProto success — clean DB records too
+          try {
+            const dbMessages =
+              await this.messagesService.getMessagesByDateRange(
+                groupTelegramId,
+                fromDate,
+                toDate,
+                targetTelegramId,
+              );
+            const dbIds = dbMessages
+              .filter(
+                (m) =>
+                  !(
+                    ownerTelegramId &&
+                    String(m.telegramUserId) === ownerTelegramId
+                  ),
+              )
+              .map((m) => m.id);
+            if (dbIds.length)
+              await this.messagesService.deleteMessagesFromDb(dbIds);
+          } catch {}
 
-        // Also clean DB for the records we had
-        try {
-          const dbMessages = await this.messagesService.getMessagesByDateRange(
-            groupTelegramId,
-            fromDate,
-            toDate,
-            targetTelegramId,
-          );
-          const dbIds = dbMessages
-            .filter(
-              (m) =>
-                !(
-                  ownerTelegramId &&
-                  String(m.telegramUserId) === ownerTelegramId
-                ),
-            )
-            .map((m) => m.id);
-          if (dbIds.length)
-            await this.messagesService.deleteMessagesFromDb(dbIds);
-        } catch {}
+          const mode = this.modeLabel(userId);
+          const summary = username
+            ? t.resultUser(groupTitle, username, result.deleted, r, mode)
+            : t.resultAll(groupTitle, result.deleted, r, mode);
 
-        const mode = this.modeLabel(userId);
-        const summary = username
-          ? t.resultUser(groupTitle, username, result.deleted, r, mode)
-          : t.resultAll(groupTitle, result.deleted, r, mode);
-
-        await edit(
-          summary + (result.failed > 0 ? t.failedSome(result.failed) : ''),
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  { text: t.btnRepeat, callback_data: 'delete:start' },
-                  { text: t.btnMain, callback_data: 'menu:main' },
+          await edit(
+            summary + (result.failed > 0 ? t.failedSome(result.failed) : ''),
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: t.btnRepeat, callback_data: 'delete:start' },
+                    { text: t.btnMain, callback_data: 'menu:main' },
+                  ],
                 ],
-              ],
+              },
             },
-          },
-        );
-        return;
+          );
+          return;
+        }
       }
 
       // ════════════════════════════════════════════════════════════════════

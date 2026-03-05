@@ -312,9 +312,14 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     filterUserId?: number,
     excludeUserIds: number[] = [],
     onProgress?: (found: number, deleted: number) => Promise<void>,
-  ): Promise<{ total: number; deleted: number; failed: number }> {
+  ): Promise<{
+    total: number;
+    deleted: number;
+    failed: number;
+    notMember?: boolean;
+  }> {
     if (!this.isReady()) {
-      return { total: 0, deleted: 0, failed: 0 };
+      return { total: 0, deleted: 0, failed: 0, notMember: false };
     }
 
     const fromTs = Math.floor(fromDate.getTime() / 1000); // unix seconds
@@ -325,8 +330,21 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     try {
       peer = await this.resolvePeer(chatId);
     } catch (err: any) {
-      this.logger.error(`resolvePeer failed for ${chatId}: ${err?.message}`);
-      return { total: 0, deleted: 0, failed: 0 };
+      const msg: string = err?.errorMessage ?? err?.message ?? '';
+      // If the session user is not a member of this chat, return notMember flag
+      if (
+        msg.includes('CHANNEL_PRIVATE') ||
+        msg.includes('CHAT_ID_INVALID') ||
+        msg.includes('USER_NOT_PARTICIPANT') ||
+        msg.includes('PEER_ID_INVALID')
+      ) {
+        this.logger.warn(
+          `Session user not a member of chatId=${chatId} — will fall back to DB`,
+        );
+        return { total: 0, deleted: 0, failed: 0, notMember: true };
+      }
+      this.logger.error(`resolvePeer failed for ${chatId}: ${msg}`);
+      return { total: 0, deleted: 0, failed: 0, notMember: false };
     }
 
     // ── Step 1: Collect all message IDs in the date range ─────────────────
@@ -365,6 +383,18 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(`History FloodWait ${waitSec}s…`);
           await this.sleep((waitSec + 2) * 1000);
           continue; // retry same page
+        }
+        // Session user not in this group
+        if (
+          msg.includes('CHANNEL_PRIVATE') ||
+          msg.includes('CHAT_ID_INVALID') ||
+          msg.includes('USER_NOT_PARTICIPANT') ||
+          msg.includes('PEER_ID_INVALID')
+        ) {
+          this.logger.warn(
+            `GetHistory: session user not member of chatId=${chatId}`,
+          );
+          return { total: 0, deleted: 0, failed: 0, notMember: true };
         }
         this.logger.error(`GetHistory error: ${msg}`);
         break;
@@ -421,7 +451,8 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       `History scan complete: found ${total} messages to delete in chatId=${chatId}`,
     );
 
-    if (total === 0) return { total: 0, deleted: 0, failed: 0 };
+    if (total === 0)
+      return { total: 0, deleted: 0, failed: 0, notMember: false };
 
     // ── Step 2: Delete collected IDs ──────────────────────────────────────
     const BATCH_SIZE = 100;
@@ -453,7 +484,9 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       progressTimer += window.length * BATCH_SIZE;
       if (onProgress && progressTimer >= 500) {
         progressTimer = 0;
-        try { await onProgress(total, deleted); } catch {}
+        try {
+          await onProgress(total, deleted);
+        } catch {}
       }
 
       if (i + CONCURRENCY < batches.length) await this.sleep(150);
