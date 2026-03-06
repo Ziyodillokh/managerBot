@@ -36,7 +36,7 @@ import { Message } from './modules/messages/entities/message.entity';
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
         entities: [Group, User, GroupAdmin, GroupSettings, Message],
-        synchronize: config.get<string>('nodeEnv') !== 'production',
+        synchronize: true,
         logging: config.get<string>('nodeEnv') === 'development',
         ssl: false,
       }),
