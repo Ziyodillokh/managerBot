@@ -1,19 +1,54 @@
-﻿export type Lang = 'uz' | 'ru' | 'en';
+﻿export type Lang = 'uz' | 'ru';
 
 export const LANG_LABELS: Record<Lang, string> = {
   uz: "🇺🇿 O'zbek",
   ru: '🇷🇺 Русский',
-  en: '🇬🇧 English',
+};
+
+// ─── Month names for calendar ────────────────────────────────────────────────
+
+export const MONTH_NAMES: Record<Lang, string[]> = {
+  uz: [
+    'Yanvar',
+    'Fevral',
+    'Mart',
+    'Aprel',
+    'May',
+    'Iyun',
+    'Iyul',
+    'Avgust',
+    'Sentabr',
+    'Oktabr',
+    'Noyabr',
+    'Dekabr',
+  ],
+  ru: [
+    'Январь',
+    'Февраль',
+    'Март',
+    'Апрель',
+    'Май',
+    'Июнь',
+    'Июль',
+    'Август',
+    'Сентябрь',
+    'Октябрь',
+    'Ноябрь',
+    'Декабрь',
+  ],
+};
+
+export const DAY_HEADERS: Record<Lang, string[]> = {
+  uz: ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
+  ru: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
 };
 
 // ─── Translation dictionary ─────────────────────────────────────────────────
 
-export type TranslationKey = keyof typeof T.uz;
-
 export const T = {
   uz: {
     // Lang
-    langSelect: '🌐 <b>Tilni tanlang</b>\n\nChoose language / Выберите язык:',
+    langSelect: '🌐 <b>Tilni tanlang / Выберите язык:</b>',
     langChanged: "✅ Til o'zgartirildi: 🇺🇿 O'zbek",
     langBtn: '🌐 Til',
     // MTProto status
@@ -21,7 +56,7 @@ export const T = {
     mtOff: "🟡 Bot API: Faqat so'nggi 48 soat",
     // Main menu
     menuNoGroups: (status: string) =>
-      `🛡 <b>Guardy Bot</b>\n\n${status}\n\nHozircha siz ega bo'lgan faol guruh yo'q.\n\nBotni guruhga qo'shing (siz o'sha guruhning <b>egasi (creator)</b> bo'lishingiz kerak) va admin huquqlarini bering:`,
+      `🛡 <b>Guardy Bot</b>\n\n${status}\n\nHozircha sizda faol guruh yo'q.\n\nBotni guruhga qo'shing (siz o'sha guruhning <b>egasi</b> yoki <b>admini</b> bo'lishingiz kerak) va admin huquqlarini bering:`,
     menuHasGroups: (status: string, count: number, list: string) =>
       `🛡 <b>Guardy Bot</b>\n\n${status}\n\n📋 Sizning guruhlaringiz (${count} ta):\n${list}\n\nXabarlarni o'chirish uchun pastdagi tugmani bosing:`,
     // Buttons
@@ -38,18 +73,23 @@ export const T = {
       '❓ <b>Yordam</b>\n\n' +
       "<b>1. Botni guruhga qo'shing</b>\n" +
       '   • "➕ Guruhga qo\'shish" tugmasini bosing\n' +
-      "   • Faqat siz <b>ega (creator)</b> bo'lgan guruhlar ishlaydi\n\n" +
+      '   • Guruh <b>egasi</b> yoki <b>ruxsat berilgan admin</b> ishlata oladi\n\n' +
       '<b>2. Botga admin huquqi bering</b>\n' +
       '   ✅ "Delete messages" huquqi kerak\n\n' +
       "<b>3. Xabar o'chirish turlari:</b>\n" +
       '   🗓 Sana oraligida — barcha foydalanuvchilar\n' +
       '   👤 Bitta foydalanuvchi xabarlari\n\n' +
+      '<b>4. 🛡 Himoyalangan foydalanuvchilar:</b>\n' +
+      "   /add buyrug'i orqali himoyalangan ro'yxatga username qo'shing.\n" +
+      "   Ularning xabarlari <b>hech qachon</b> o'chirilmaydi.\n\n" +
+      '<b>5. 👥 Ruxsatlar (faqat guruh egasi):</b>\n' +
+      "   Guruh adminlariga xabar o'chirish huquqini bering.\n\n" +
       '<b>❗ Eslatma:</b>\n' +
-      "   Guruh egasi va botlar xabarlari <b>hech qachon</b> o'chirilmaydi.",
+      "   Guruh egasi, botlar va himoyalangan foydalanuvchilar xabarlari <b>hech qachon</b> o'chirilmaydi.",
     // Delete flow
     selectGroup: '📋 <b>Guruhni tanlang:</b>',
     noGroups:
-      "❌ Siz ega bo'lgan va bot qo'shilgan guruh yo'q.\n\nAvval \"➕ Guruhga qo'shish\" tugmasini bosing.",
+      "❌ Sizda bot qo'shilgan guruh yo'q.\n\nAvval \"➕ Guruhga qo'shish\" tugmasini bosing.",
     deleteType: (group: string) =>
       `🗑️ <b>${group}</b>\n\nQanday xabarlarni o'chirmoqchisiz?`,
     btnAllMsgs: '🗓 Sana oraligida (hammaning xabarlari)',
@@ -100,22 +140,65 @@ export const T = {
       `✅ <b>${title}</b> guruhiga muvaffaqiyatli qo'shildim!\n\nEndi /start buyrug'i orqali xabarlarni boshqarishingiz mumkin.`,
     mtMode: '🟢 MTProto (cheksiz)',
     botApiMode: '🟡 Bot API (48s)',
-    // Session not a member of this group
     notMemberWarning:
       "⚠️ <b>Diqqat:</b> MTProto sessiyasi bu guruhning a'zosi emas.\n\n" +
       "🟡 <b>DB rejimiga o'tildi</b> — faqat bot faol bo'lgan davrdan beri\n" +
       "yig'ilgan xabarlar o'chiriladi (48s limiti bor).\n\n" +
       "<i>MTProto bilan eski xabarlarni o'chirish uchun session egasi ham guruh a'zosi bo'lishi kerak.</i>",
+
+    // Calendar
+    calendarTitle: (group: string, month: string, year: number) =>
+      `📅 <b>${group}</b> — ${month} ${year}`,
+    calendarSelectStart: '📅 <b>Boshlanish sanasini tanlang:</b>',
+    calendarSelectEnd: (startDate: string) =>
+      `📅 Boshlanish: <b>${startDate}</b>\n\n<b>Tugash sanasini tanlang:</b>`,
+    calendarConfirm: (from: string, to: string) =>
+      `📅 <b>${from}</b> — <b>${to}</b>\n\nTasdiqlaysizmi?`,
+    btnConfirm: '✅ Tasdiqlash',
+
+    // Protected users
+    addPrompt:
+      '🛡 Username kiriting (@ bilan yoki @ siz):\n\nMisol: <code>@username</code>',
+    addSuccess: (username: string) =>
+      `✅ @${username} himoyalangan ro'yxatga qo'shildi.`,
+    addAlready: (username: string) => `ℹ️ @${username} allaqachon ro'yxatda.`,
+    addRemoved: (username: string) =>
+      `✅ @${username} ro'yxatdan olib tashlandi.`,
+    addList: (list: string) =>
+      `🛡 <b>Himoyalangan foydalanuvchilar:</b>\n\n${list}\n\n<i>Bu foydalanuvchilarning xabarlari hech qachon o'chirilmaydi.</i>`,
+    addEmpty:
+      "🛡 Himoyalangan foydalanuvchilar yo'q.\n\n➕ Qo'shish tugmasini bosing.",
+    btnProtected: '🛡 Himoyalangan',
+    btnAddUser: "➕ Qo'shish",
+
+    // Access management
+    accessGranted: (username: string, group: string) =>
+      `✅ @${username} ga <b>${group}</b> guruhida o'chirish huquqi berildi.`,
+    accessRevoked: (username: string, group: string) =>
+      `✅ @${username} dan <b>${group}</b> guruhida huquq olib tashlandi.`,
+    accessList: (group: string, list: string) =>
+      `👥 <b>${group}</b> — ruxsat berilganlar:\n\n${list}`,
+    accessEmpty: (group: string) =>
+      `👥 <b>${group}</b> — hech kimga ruxsat berilmagan.\n\n➕ tugmani bosib admin qo'shing.`,
+    btnAccess: '👥 Ruxsatlar',
+    accessNotAdmin: '❌ Bu foydalanuvchi guruh admini emas.',
+    accessPrompt:
+      "👥 Admin username'ini kiriting:\n\nMisol: <code>@username</code>",
+    accessSelectGroup: '👥 <b>Guruhni tanlang:</b>',
+
+    // Username input for single-user delete
+    inputUsername: (group: string) =>
+      `👤 <b>${group}</b>\n\nFoydalanuvchi username'ini kiriting:\n\nMisol: <code>@username</code>`,
   },
 
   ru: {
-    langSelect: '🌐 <b>Выберите язык</b>\n\nChoose language / Tilni tanlang:',
+    langSelect: '🌐 <b>Tilni tanlang / Выберите язык:</b>',
     langChanged: '✅ Язык изменён: 🇷🇺 Русский',
     langBtn: '🌐 Язык',
     mtOn: '🟢 MTProto: Активен (без ограничений)',
     mtOff: '🟡 Bot API: Только последние 48 часов',
     menuNoGroups: (status: string) =>
-      `🛡 <b>Guardy Bot</b>\n\n${status}\n\nУ вас нет активных групп.\n\nДобавьте бота в группу (вы должны быть <b>создателем (creator)</b>) и дайте права администратора:`,
+      `🛡 <b>Guardy Bot</b>\n\n${status}\n\nУ вас нет активных групп.\n\nДобавьте бота в группу (вы должны быть <b>владельцем</b> или <b>админом</b>) и дайте права администратора:`,
     menuHasGroups: (status: string, count: number, list: string) =>
       `🛡 <b>Guardy Bot</b>\n\n${status}\n\n📋 Ваши группы (${count}):\n${list}\n\nНажмите кнопку ниже для удаления сообщений:`,
     btnAddGroup: '➕ Добавить в группу',
@@ -130,17 +213,22 @@ export const T = {
       '❓ <b>Помощь</b>\n\n' +
       '<b>1. Добавьте бота в группу</b>\n' +
       '   • Нажмите "➕ Добавить в группу"\n' +
-      '   • Работает только в группах, где вы <b>создатель (creator)</b>\n\n' +
+      '   • Работает для <b>владельца</b> и <b>админов с доступом</b>\n\n' +
       '<b>2. Дайте боту права администратора</b>\n' +
       '   ✅ "Удаление сообщений"\n\n' +
       '<b>3. Режимы удаления:</b>\n' +
       '   🗓 По диапазону дат — все пользователи\n' +
       '   👤 Сообщения одного пользователя\n\n' +
+      '<b>4. 🛡 Защищённые пользователи:</b>\n' +
+      '   Через /add добавьте username в защищённый список.\n' +
+      '   Их сообщения <b>никогда</b> не удаляются.\n\n' +
+      '<b>5. 👥 Доступы (только владелец):</b>\n' +
+      '   Дайте админам группы право удалять сообщения.\n\n' +
       '<b>❗ Важно:</b>\n' +
-      '   Сообщения создателя группы и ботов <b>никогда</b> не удаляются.',
+      '   Сообщения владельца, ботов и защищённых пользователей <b>никогда</b> не удаляются.',
     selectGroup: '📋 <b>Выберите группу:</b>',
     noGroups:
-      '❌ Нет групп, где вы создатель и добавлен бот.\n\nНажмите "➕ Добавить в группу".',
+      '❌ Нет групп, где добавлен бот.\n\nНажмите "➕ Добавить в группу".',
     deleteType: (group: string) =>
       `🗑️ <b>${group}</b>\n\nКакие сообщения удалить?`,
     btnAllMsgs: '🗓 По диапазону дат (все пользователи)',
@@ -194,103 +282,47 @@ export const T = {
       '🟡 <b>Переключено на DB режим</b> — удаляются только сообщения,\n' +
       'собранные ботом с момента его добавления (лимит 48ч).\n\n' +
       '<i>Для удаления старых сообщений через MTProto владелец сессии должен быть участником группы.</i>',
-  },
 
-  en: {
-    langSelect: '🌐 <b>Choose language</b>\n\nTilni tanlang / Выберите язык:',
-    langChanged: '✅ Language changed: 🇬🇧 English',
-    langBtn: '🌐 Language',
-    mtOn: '🟢 MTProto: Active (no time limit)',
-    mtOff: '🟡 Bot API: Last 48 hours only',
-    menuNoGroups: (status: string) =>
-      `🛡 <b>Guardy Bot</b>\n\n${status}\n\nYou have no active groups yet.\n\nAdd the bot to a group (you must be the <b>owner/creator</b>) and grant admin rights:`,
-    menuHasGroups: (status: string, count: number, list: string) =>
-      `🛡 <b>Guardy Bot</b>\n\n${status}\n\n📋 Your groups (${count}):\n${list}\n\nPress the button below to delete messages:`,
-    btnAddGroup: '➕ Add to group',
-    btnDelete: '🗑️ Delete messages',
-    btnAddNew: '➕ Add new group',
-    btnHelp: '❓ Help',
-    btnBack: '⬅️ Back',
-    btnCancel: '❌ Cancel',
-    btnMain: '🏠 Main menu',
-    btnRepeat: '🔄 Delete again',
-    helpText:
-      '❓ <b>Help</b>\n\n' +
-      '<b>1. Add bot to a group</b>\n' +
-      '   • Press "➕ Add to group"\n' +
-      '   • Works only in groups where you are the <b>creator/owner</b>\n\n' +
-      '<b>2. Grant admin rights to bot</b>\n' +
-      '   ✅ "Delete messages" permission required\n\n' +
-      '<b>3. Delete modes:</b>\n' +
-      '   🗓 Date range — all users\n' +
-      '   👤 Single user messages\n\n' +
-      '<b>❗ Note:</b>\n' +
-      '   Group owner and bot messages are <b>never</b> deleted.',
-    selectGroup: '📋 <b>Select a group:</b>',
-    noGroups:
-      '❌ No groups where you are owner and bot is added.\n\nPress "➕ Add to group" first.',
-    deleteType: (group: string) =>
-      `🗑️ <b>${group}</b>\n\nWhat messages do you want to delete?`,
-    btnAllMsgs: '🗓 Date range (all users)',
-    btnUserMsgs: '👤 Single user messages',
-    inputAllDate: (group: string, hint: string) =>
-      `🗓 <b>${group} — enter date range</b>\n\nFormat: <code>YYYY-MM-DD YYYY-MM-DD</code>\nExample: <code>2026-01-01 2026-03-05</code>\n\n${hint}\n\n⛔ <i>Owner and bot messages are never deleted.</i>`,
-    inputUserDate: (group: string, hint: string) =>
-      `👤 <b>${group} — user messages</b>\n\nFormat: <code>@username YYYY-MM-DD YYYY-MM-DD</code>\nExample: <code>@john 2026-01-01 2026-03-05</code>\n\n${hint}\n\n⛔ <i>Group owner messages are never deleted.</i>`,
-    mtHintOn: '✅ MTProto: Deletes messages of any age — no 48h limit.',
-    mtHintOff:
-      '⚠️ Bot API: Only last 48 hours (add TELEGRAM_SESSION to remove limit).',
-    cancelled: '❌ Cancelled.',
-    searching: (group: string) => `🔍 <b>${group}</b>\n\nSearching messages...`,
-    deleting: (count: number) =>
-      `🗑️ Deleting <b>${count}</b> messages...\n<i>Please wait.</i>`,
-    notFound: (range: string) =>
-      `ℹ️ No messages found to delete for <b>${range}</b>.`,
-    notFoundUser: (username: string, range: string) =>
-      `ℹ️ No messages from ${username} found for <b>${range}</b>.`,
-    userNotFound: (uname: string) =>
-      `❌ User @${uname} not found.\n\nUser must have sent a message in the group.`,
-    ownerProtected: '⛔ Cannot delete messages from the group owner.',
-    resultAll: (group: string, deleted: number, range: string, mode: string) =>
-      `✅ <b>${group}</b>\n\n<b>${deleted}</b> messages deleted.\n📅 ${range}\n${mode}`,
-    resultUser: (
-      group: string,
-      username: string,
-      deleted: number,
-      range: string,
-      mode: string,
-    ) =>
-      `✅ <b>${group}</b>\n\n${username} — <b>${deleted}</b> messages deleted.\n📅 ${range}\n${mode}`,
-    failedSome: (n: number) =>
-      `\n⚠️ ${n} messages could not be deleted (already removed or too old).`,
-    groupNotFound: '❌ Group not found.',
-    error: '❌ An error occurred. Please try again.',
-    badDateFormat: 'Example: <code>2026-01-01 2026-03-05</code>',
-    badUserDateFormat: 'Example: <code>@john 2026-01-01 2026-03-05</code>',
-    dateOrderError: '❌ Start date must be before end date.',
-    badFormat: '❌ Invalid format.\n\n',
-    notOwner: (title: string) =>
-      `<b>❌ Error!</b>\n\nYou are not the owner of group <b>${title}</b>.\n\nBot works only in groups you own. Leaving.`,
-    noAdminRights: (title: string) =>
-      `<b>⚠️ ${title}</b>\n\nBot was added but has no <b>admin rights</b>.\n\n✅ Please grant "Delete messages" permission.`,
-    addedToGroup: (title: string) =>
-      `✅ Successfully added to <b>${title}</b>!\n\nNow use /start to manage messages.`,
-    mtMode: '🟢 MTProto (unlimited)',
-    botApiMode: '🟡 Bot API (48h)',
-    notMemberWarning:
-      '⚠️ <b>Notice:</b> MTProto session is not a member of this group.\n\n' +
-      '🟡 <b>Switched to DB mode</b> — only messages collected by the bot\n' +
-      'since it was added will be deleted (48h limit applies).\n\n' +
-      '<i>To delete old messages via MTProto, the session account must be a member of the group.</i>',
+    // Calendar
+    calendarTitle: (group: string, month: string, year: number) =>
+      `📅 <b>${group}</b> — ${month} ${year}`,
+    calendarSelectStart: '📅 <b>Выберите начальную дату:</b>',
+    calendarSelectEnd: (startDate: string) =>
+      `📅 Начало: <b>${startDate}</b>\n\n<b>Выберите конечную дату:</b>`,
+    calendarConfirm: (from: string, to: string) =>
+      `📅 <b>${from}</b> — <b>${to}</b>\n\nПодтверждаете?`,
+    btnConfirm: '✅ Подтвердить',
+
+    // Protected users
+    addPrompt:
+      '🛡 Введите username (с @ или без):\n\nПример: <code>@username</code>',
+    addSuccess: (username: string) =>
+      `✅ @${username} добавлен в защищённый список.`,
+    addAlready: (username: string) => `ℹ️ @${username} уже в списке.`,
+    addRemoved: (username: string) => `✅ @${username} удалён из списка.`,
+    addList: (list: string) =>
+      `🛡 <b>Защищённые пользователи:</b>\n\n${list}\n\n<i>Сообщения этих пользователей никогда не удаляются.</i>`,
+    addEmpty: '🛡 Нет защищённых пользователей.\n\n➕ Нажмите "Добавить".',
+    btnProtected: '🛡 Защищённые',
+    btnAddUser: '➕ Добавить',
+
+    // Access management
+    accessGranted: (username: string, group: string) =>
+      `✅ @${username} получил право удаления в <b>${group}</b>.`,
+    accessRevoked: (username: string, group: string) =>
+      `✅ У @${username} отозвано право удаления в <b>${group}</b>.`,
+    accessList: (group: string, list: string) =>
+      `👥 <b>${group}</b> — пользователи с доступом:\n\n${list}`,
+    accessEmpty: (group: string) =>
+      `👥 <b>${group}</b> — доступ никому не выдан.\n\nНажмите ➕ чтобы добавить админа.`,
+    btnAccess: '👥 Доступы',
+    accessNotAdmin: '❌ Этот пользователь не является админом группы.',
+    accessPrompt:
+      '👥 Введите username админа:\n\nПример: <code>@username</code>',
+    accessSelectGroup: '👥 <b>Выберите группу:</b>',
+
+    // Username input for single-user delete
+    inputUsername: (group: string) =>
+      `👤 <b>${group}</b>\n\nВведите username пользователя:\n\nПример: <code>@username</code>`,
   },
 } as const;
-
-export type Translations = typeof T.uz;
-
-/** Helper: get translation with fallback to Uzbek */
-export function tr(
-  lang: Lang,
-  key: keyof Translations,
-): Translations[typeof key] {
-  return (T[lang] as any)[key] ?? (T.uz as any)[key];
-}

@@ -270,12 +270,13 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       const results = await Promise.allSettled(
         window.map((batch) => this.deleteBatch(chatId, peer, batch)),
       );
-      for (const r of results) {
+      for (let j = 0; j < results.length; j++) {
+        const r = results[j];
         if (r.status === 'fulfilled') {
           deleted += r.value.deleted;
           failed += r.value.failed;
         } else {
-          failed += BATCH_SIZE;
+          failed += window[j].length;
         }
       }
       // 4. Pause between windows (avoid rate limiting)
@@ -473,12 +474,13 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       const results = await Promise.allSettled(
         window.map((batch) => this.deleteBatch(chatId, peer, batch)),
       );
-      for (const r of results) {
+      for (let j = 0; j < results.length; j++) {
+        const r = results[j];
         if (r.status === 'fulfilled') {
           deleted += r.value.deleted;
           failed += r.value.failed;
         } else {
-          failed += BATCH_SIZE;
+          failed += window[j].length;
         }
       }
 

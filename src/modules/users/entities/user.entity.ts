@@ -27,7 +27,7 @@ export class User {
   lastName: string;
 
   /**
-   * Language preference: 'uz' | 'ru' | 'en'.
+   * Language preference: 'uz' | 'ru'.
    * NULL means the user has not yet made an explicit choice — show lang selector.
    */
   @Column({ type: 'varchar', length: 2, nullable: true, default: null })

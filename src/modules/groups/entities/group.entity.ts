@@ -7,7 +7,6 @@ import {
   OneToMany,
 } from 'typeorm';
 import { GroupAdmin } from '../../admins/entities/group-admin.entity';
-import { GroupSettings } from '../../settings/entities/group-settings.entity';
 import { Message } from '../../messages/entities/message.entity';
 
 @Entity('groups')
@@ -41,7 +40,4 @@ export class Group {
 
   @OneToMany(() => Message, (msg) => msg.group, { cascade: true })
   messages: Message[];
-
-  @OneToMany(() => GroupSettings, (s) => s.group, { cascade: true })
-  settings: GroupSettings[];
 }

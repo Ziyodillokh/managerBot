@@ -7,12 +7,11 @@ import { TelegramModule } from './telegram/telegram.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { UsersModule } from './modules/users/users.module';
 import { AdminsModule } from './modules/admins/admins.module';
-import { SettingsModule } from './modules/settings/settings.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { Group } from './modules/groups/entities/group.entity';
 import { User } from './modules/users/entities/user.entity';
 import { GroupAdmin } from './modules/admins/entities/group-admin.entity';
-import { GroupSettings } from './modules/settings/entities/group-settings.entity';
+import { ProtectedUser } from './modules/admins/entities/protected-user.entity';
 import { Message } from './modules/messages/entities/message.entity';
 
 @Module({
@@ -35,7 +34,7 @@ import { Message } from './modules/messages/entities/message.entity';
         username: config.get<string>('database.username'),
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
-        entities: [Group, User, GroupAdmin, GroupSettings, Message],
+        entities: [Group, User, GroupAdmin, ProtectedUser, Message],
         synchronize: true,
         logging: config.get<string>('nodeEnv') === 'development',
         ssl: false,
@@ -56,7 +55,6 @@ import { Message } from './modules/messages/entities/message.entity';
     GroupsModule,
     UsersModule,
     AdminsModule,
-    SettingsModule,
     MessagesModule,
     TelegramModule,
   ],

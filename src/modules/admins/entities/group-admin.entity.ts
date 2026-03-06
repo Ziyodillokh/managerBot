@@ -34,18 +34,10 @@ export class GroupAdmin {
   @Column({ default: false })
   isOwner: boolean;
 
+  /** Whether this admin has been granted delete-message access by the owner */
   @Column({ default: false })
-  canDeleteMessages: boolean;
-
-  @Column({ default: false })
-  canRestrictMembers: boolean;
-
-  @Column({ default: false })
-  canManageChat: boolean;
-
-  @Column({ default: false })
-  canPromoteMembers: boolean;
+  hasDeleteAccess: boolean;
 
   @CreateDateColumn()
-  cachedAt: Date;
+  createdAt: Date;
 }

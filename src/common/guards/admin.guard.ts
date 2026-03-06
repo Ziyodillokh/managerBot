@@ -35,7 +35,10 @@ export class AdminGuard implements CanActivate {
       return false;
     }
 
-    const isAdmin = await this.adminsService.isAdmin(chat.id, from.id);
+    const isAdmin = await this.adminsService.hasAccess(
+      String(chat.id),
+      String(from.id),
+    );
     if (!isAdmin) {
       await telegrafCtx.reply(
         '🚫 Bu amalni faqat guruh administratorlari va moderatorlari bajarishi mumkin.',

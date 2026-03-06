@@ -25,13 +25,23 @@ export class UsersService {
         lastName,
         username,
       });
-      await this.userRepo.save(user);
-    } else {
-      user.firstName = firstName;
-      if (lastName !== undefined) user.lastName = lastName;
-      if (username !== undefined) user.username = username;
-      await this.userRepo.save(user);
+      return this.userRepo.save(user);
     }
+    // Only update if something actually changed
+    let changed = false;
+    if (user.firstName !== firstName) {
+      user.firstName = firstName;
+      changed = true;
+    }
+    if (lastName !== undefined && user.lastName !== lastName) {
+      user.lastName = lastName;
+      changed = true;
+    }
+    if (username !== undefined && user.username !== username) {
+      user.username = username;
+      changed = true;
+    }
+    if (changed) await this.userRepo.save(user);
     return user;
   }
 
