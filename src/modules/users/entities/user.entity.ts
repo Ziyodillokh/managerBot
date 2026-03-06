@@ -30,7 +30,7 @@ export class User {
    * Language preference: 'uz' | 'ru' | 'en'.
    * NULL means the user has not yet made an explicit choice — show lang selector.
    */
-  @Column({ nullable: true, length: 2, default: () => 'NULL' })
+  @Column({ type: 'varchar', length: 2, nullable: true, default: null })
   lang: string | null;
 
   @CreateDateColumn()
