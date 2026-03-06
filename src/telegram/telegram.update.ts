@@ -32,8 +32,14 @@ export class TelegramUpdate implements OnModuleInit {
 
   /** Conversation state per user */
   private readonly deleteStates = new Map<number, DeleteState>();
-  /** Language preference per user (persists in memory until restart) */
+  /** Language preference per user (in-memory cache; source of truth is DB) */
   private readonly langMap = new Map<number, Lang>();
+  /** Owner-group membership cache: userId → { groups, cachedAt } */
+  private readonly groupsCache = new Map<
+    number,
+    { groups: Array<{ telegramId: string; title: string }>; cachedAt: number }
+  >();
+  private readonly GROUPS_CACHE_TTL = 60_000; // 60 seconds
 
   constructor(
     @InjectBot() private readonly bot: Telegraf,
@@ -102,6 +108,8 @@ export class TelegramUpdate implements OnModuleInit {
     // Bot removed
     if (['left', 'kicked'].includes(newStatus)) {
       await this.groupsService.deactivate(chat.id);
+      // Invalidate cached groups for this owner so next menu open is fresh
+      this.groupsCache.delete(from.id);
       this.logger.log(`Bot removed from: ${chat.title}`);
       return;
     }
@@ -159,6 +167,8 @@ export class TelegramUpdate implements OnModuleInit {
     );
 
     this.logger.log(`Bot added to group: "${chat.title}" (${chat.id})`);
+    // Invalidate cached groups so the new group appears immediately in the menu
+    this.groupsCache.delete(from.id);
 
     try {
       await ctx.telegram.sendMessage(from.id, t.addedToGroup(chat.title), {
@@ -234,18 +244,24 @@ export class TelegramUpdate implements OnModuleInit {
     try {
       if (ctx.chat?.type !== 'private') return;
       this.deleteStates.delete(ctx.from!.id);
+      const userId = ctx.from!.id;
 
       await this.usersService.findOrCreate(
-        ctx.from!.id,
+        userId,
         ctx.from!.first_name,
         ctx.from!.last_name,
         ctx.from!.username,
       );
 
-      // First-time user: show language selector
-      if (!this.langMap.has(ctx.from!.id)) {
-        await this.sendLangSelect(ctx, false);
-        return;
+      // Load language from DB if not already in memory
+      if (!this.langMap.has(userId)) {
+        const dbLang = await this.usersService.getLang(userId);
+        if (!dbLang) {
+          // New user — show language selector
+          await this.sendLangSelect(ctx, false);
+          return;
+        }
+        this.langMap.set(userId, dbLang as Lang);
       }
 
       await this.sendMainMenu(ctx, false);
@@ -285,8 +301,13 @@ export class TelegramUpdate implements OnModuleInit {
     const code = ((ctx as any).callbackQuery?.data as string).split(
       ':',
     )[1] as Lang;
-    this.langMap.set(ctx.from!.id, code);
-    const t = this.t(ctx.from!.id);
+    const userId = ctx.from!.id;
+    this.langMap.set(userId, code);
+    // Persist to DB so language survives bot restarts
+    try {
+      await this.usersService.setLang(userId, code);
+    } catch {}
+    const t = this.t(userId);
     await (ctx as any).answerCbQuery(t.langChanged, { show_alert: false });
     await this.sendMainMenu(ctx, true);
   }
@@ -296,6 +317,12 @@ export class TelegramUpdate implements OnModuleInit {
   private async getMyGroups(
     userId: number,
   ): Promise<Array<{ telegramId: string; title: string }>> {
+    const now = Date.now();
+    const cached = this.groupsCache.get(userId);
+    if (cached && now - cached.cachedAt < this.GROUPS_CACHE_TTL) {
+      return cached.groups;
+    }
+
     const allGroups = await this.groupsService.getActiveGroups();
     const myGroups: Array<{ telegramId: string; title: string }> = [];
     for (const group of allGroups) {
@@ -309,6 +336,8 @@ export class TelegramUpdate implements OnModuleInit {
         }
       } catch {}
     }
+
+    this.groupsCache.set(userId, { groups: myGroups, cachedAt: now });
     return myGroups;
   }
 

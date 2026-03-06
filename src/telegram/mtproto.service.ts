@@ -139,6 +139,7 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
   // ──────────────────────────────────────────────────────────────────────────
 
   private async deleteBatch(
+    chatId: number,
     peer: PeerEntry,
     ids: number[],
     attempt = 0,
@@ -168,7 +169,7 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
             `FLOOD_WAIT_${waitSec}s — waiting before retry (attempt ${attempt + 1})...`,
           );
           await this.sleep((waitSec + 2) * 1000);
-          return this.deleteBatch(peer, ids, attempt + 1);
+          return this.deleteBatch(chatId, peer, ids, attempt + 1);
         }
         this.logger.warn(
           `FLOOD_WAIT exceeded max retries for ${ids.length} messages.`,
@@ -186,26 +187,27 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         return { deleted: ids.length, failed: 0 };
       }
 
-      // ── Peer access issue — invalidate cache and retry once ───────────────
+      // ── Peer access issue — invalidate cache, re-resolve, retry once ───────
       if (
         (msg.includes('CHANNEL_INVALID') || msg.includes('PEER_ID_INVALID')) &&
         attempt === 0
       ) {
         this.logger.warn(
-          `Peer error: ${msg} — invalidating cache and retrying...`,
+          `Peer error: ${msg} for chatId=${chatId} — clearing cache and re-resolving...`,
         );
-        // Clear cache so next call re-resolves
-        const chatIds = [...this.peerCache.entries()]
-          .filter(([, v]) => v.entity === peer.entity)
-          .map(([k]) => k);
-        for (const id of chatIds) this.peerCache.delete(id);
-        return { deleted: 0, failed: ids.length };
+        this.peerCache.delete(chatId);
+        try {
+          const freshPeer = await this.resolvePeer(chatId);
+          return this.deleteBatch(chatId, freshPeer, ids, attempt + 1);
+        } catch {
+          return { deleted: 0, failed: ids.length };
+        }
       }
 
       // ── Unknown error ─────────────────────────────────────────────────────
       if (attempt < 2) {
         await this.sleep(1000);
-        return this.deleteBatch(peer, ids, attempt + 1);
+        return this.deleteBatch(chatId, peer, ids, attempt + 1);
       }
       this.logger.debug(`deleteBatch err: ${msg} for ${ids.length} ids`);
       return { deleted: 0, failed: ids.length };
@@ -266,7 +268,7 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     for (let i = 0; i < batches.length; i += CONCURRENCY) {
       const window = batches.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(
-        window.map((batch) => this.deleteBatch(peer, batch)),
+        window.map((batch) => this.deleteBatch(chatId, peer, batch)),
       );
       for (const r of results) {
         if (r.status === 'fulfilled') {
@@ -469,7 +471,7 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     for (let i = 0; i < batches.length; i += CONCURRENCY) {
       const window = batches.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(
-        window.map((batch) => this.deleteBatch(peer, batch)),
+        window.map((batch) => this.deleteBatch(chatId, peer, batch)),
       );
       for (const r of results) {
         if (r.status === 'fulfilled') {
@@ -480,9 +482,9 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // Call progress callback every ~500 messages
+      // Call progress callback every ~300 messages (lower threshold for small sets)
       progressTimer += window.length * BATCH_SIZE;
-      if (onProgress && progressTimer >= 500) {
+      if (onProgress && progressTimer >= 300) {
         progressTimer = 0;
         try {
           await onProgress(total, deleted);
@@ -492,10 +494,17 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       if (i + CONCURRENCY < batches.length) await this.sleep(150);
     }
 
+    // Final progress update to ensure 100% is always reported
+    if (onProgress && total > 0) {
+      try {
+        await onProgress(total, deleted);
+      } catch {}
+    }
+
     this.logger.log(
       `fetchAndDelete chatId=${chatId}: ✅${deleted} deleted, ⚠️${failed} failed, total=${total}`,
     );
-    return { total, deleted, failed };
+    return { total, deleted, failed, notMember: false };
   }
 
   // ──────────────────────────────────────────────────────────────────────────

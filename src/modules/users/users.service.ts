@@ -43,4 +43,23 @@ export class UsersService {
     const clean = username.startsWith('@') ? username.slice(1) : username;
     return this.userRepo.findOne({ where: { username: clean } });
   }
+
+  /**
+   * Persist user's language choice to DB so it survives bot restarts.
+   */
+  async setLang(telegramId: string | number, lang: string): Promise<void> {
+    await this.userRepo.update({ telegramId: String(telegramId) }, { lang });
+  }
+
+  /**
+   * Returns the persisted language choice, or null if the user has not
+   * explicitly set one yet (first-time user — show language selector).
+   */
+  async getLang(telegramId: string | number): Promise<string | null> {
+    const user = await this.userRepo.findOne({
+      where: { telegramId: String(telegramId) },
+      select: ['lang'],
+    });
+    return user?.lang ?? null;
+  }
 }

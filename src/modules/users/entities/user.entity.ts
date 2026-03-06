@@ -26,6 +26,13 @@ export class User {
   @Column({ nullable: true, length: 255 })
   lastName: string;
 
+  /**
+   * Language preference: 'uz' | 'ru' | 'en'.
+   * NULL means the user has not yet made an explicit choice — show lang selector.
+   */
+  @Column({ nullable: true, length: 2, default: () => 'NULL' })
+  lang: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
