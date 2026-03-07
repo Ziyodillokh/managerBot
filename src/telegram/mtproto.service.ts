@@ -147,6 +147,31 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  //  Check if MTProto session user is admin/owner of a supergroup
+  // ──────────────────────────────────────────────────────────────────────────
+
+  private async isSessionAdmin(peer: PeerEntry): Promise<boolean> {
+    if (peer.type !== 'channel') return false; // basic groups — can't check via this API
+    try {
+      const result = await this.client!.invoke(
+        new Api.channels.GetParticipant({
+          channel: peer.entity,
+          participant: new Api.InputPeerSelf(),
+        }),
+      );
+      const p = (result as any).participant;
+      const className: string = p?.className ?? '';
+      return (
+        className === 'ChannelParticipantCreator' ||
+        className === 'ChannelParticipantAdmin'
+      );
+    } catch (err: any) {
+      this.logger.warn(`isSessionAdmin check failed: ${err?.message ?? err}`);
+      return false;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   //  Internal: delete one batch with FloodWait retry
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -193,10 +218,17 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       const msg: string = err?.errorMessage ?? err?.message ?? '';
       if (
         msg.includes('MESSAGE_ID_INVALID') ||
-        msg.includes('MSG_ID_INVALID') ||
-        msg.includes('MESSAGE_DELETE_FORBIDDEN')
+        msg.includes('MSG_ID_INVALID')
       ) {
         return { deleted: ids.length, failed: 0 };
+      }
+
+      // ── No permission to delete (not admin) → count as failed ─────────────
+      if (msg.includes('MESSAGE_DELETE_FORBIDDEN')) {
+        this.logger.warn(
+          `MESSAGE_DELETE_FORBIDDEN for ${ids.length} msgs in chatId=${chatId} — session user likely not admin`,
+        );
+        return { deleted: 0, failed: ids.length };
       }
 
       // ── Peer access issue — invalidate cache, re-resolve, retry once ───────
@@ -338,6 +370,7 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     deleted: number;
     failed: number;
     notMember?: boolean;
+    notAdmin?: boolean;
   }> {
     if (!this.isReady()) {
       return { total: 0, deleted: 0, failed: 0, notMember: false };
@@ -369,6 +402,23 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       }
       this.logger.error(`resolvePeer failed for ${chatId}: ${msg}`);
       return { total: 0, deleted: 0, failed: 0, notMember: false };
+    }
+
+    // ── Check if session user is admin/owner (required to delete others' messages) ──
+    if (peer.type === 'channel') {
+      const isAdmin = await this.isSessionAdmin(peer);
+      if (!isAdmin) {
+        this.logger.warn(
+          `Session user is NOT admin/owner of chatId=${chatId} — cannot delete messages`,
+        );
+        return {
+          total: 0,
+          deleted: 0,
+          failed: 0,
+          notMember: false,
+          notAdmin: true,
+        };
+      }
     }
 
     // ── Step 1: Collect all message IDs in the date range ─────────────────

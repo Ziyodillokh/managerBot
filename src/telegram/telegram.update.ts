@@ -1284,6 +1284,10 @@ export class TelegramUpdate implements OnModuleInit {
           usedFallback = true;
           await edit(t.notMemberWarning);
           await new Promise((res) => setTimeout(res, 1500));
+        } else if (result.notAdmin) {
+          usedFallback = true;
+          await edit(t.notAdminWarning);
+          await new Promise((res) => setTimeout(res, 1500));
         } else if (result.total === 0) {
           await edit(t.notFound(r));
           return;

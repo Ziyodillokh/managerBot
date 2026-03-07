@@ -111,6 +111,12 @@ export const T = {
       "🟡 <b>DB rejimiga o'tildi</b> — faqat bot faol bo'lgan davrdan beri " +
       "yig'ilgan xabarlar o'chiriladi (48s limiti bor).\n\n" +
       "<i>MTProto uchun session egasi ham guruh a'zosi bo'lishi kerak.</i>",
+    notAdminWarning:
+      '⚠️ <b>Diqqat:</b> MTProto sessiya egasi bu guruhda <b>admin/egasi</b> emas.\n\n' +
+      "Boshqa odamlarning xabarlarini o'chirish uchun sessiya egasi " +
+      "guruhda <b>admin</b> yoki <b>egasi</b> bo'lishi shart.\n\n" +
+      "🟡 <b>DB rejimiga o'tildi</b> — faqat bot yig'ilgan xabarlar (48s limiti bor).\n\n" +
+      "<i>Yechim: MTProto sessiya egasini guruhga admin qilib qo'shing.</i>",
     calendarTitle: (group: string, month: string, year: number) =>
       `📅 <b>${group}</b> — ${month} ${year}`,
     calendarSelectStart: '📅 <b>Boshlanish sanasini tanlang:</b>',
@@ -214,6 +220,12 @@ export const T = {
       '🟡 <b>DB режим</b> — удаляются только сообщения ' +
       'собранные ботом (лимит 48ч).\n\n' +
       '<i>Для MTProto владелец сессии должен быть в группе.</i>',
+    notAdminWarning:
+      '⚠️ <b>Внимание:</b> MTProto сессия <b>не админ/владелец</b> этой группы.\n\n' +
+      'Для удаления чужих сообщений владелец сессии должен быть ' +
+      '<b>админом</b> или <b>владельцем</b> группы.\n\n' +
+      '🟡 <b>DB режим</b> — удаляются только собранные ботом (лимит 48ч).\n\n' +
+      '<i>Решение: назначьте владельца MTProto сессии админом группы.</i>',
     calendarTitle: (group: string, month: string, year: number) =>
       `📅 <b>${group}</b> — ${month} ${year}`,
     calendarSelectStart: '📅 <b>Выберите начальную дату:</b>',
