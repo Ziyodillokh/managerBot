@@ -20,7 +20,7 @@ export class Group {
   @Column({ length: 255 })
   title: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   username: string | null;
 
   @Column({ default: 'supergroup' })
