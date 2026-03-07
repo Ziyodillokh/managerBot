@@ -237,6 +237,9 @@ export class TelegramUpdate implements OnModuleInit {
       /* Group message → track */
       if (text.startsWith('/')) return next();
 
+      // Skip messages sent on behalf of the group/channel (anonymous admin)
+      if (msg.sender_chat) return next();
+
       await this.usersService.findOrCreate(
         ctx.from.id,
         ctx.from.first_name,
@@ -956,7 +959,7 @@ export class TelegramUpdate implements OnModuleInit {
         callback_data: `access:add:${groupTelegramId}`,
       },
     ]);
-    keyboard.push([{ text: t.btnBack, callback_data: 'access:start' }]);
+    keyboard.push([{ text: t.btnBack, callback_data: 'menu:main' }]);
 
     const opts: any = {
       parse_mode: 'HTML',

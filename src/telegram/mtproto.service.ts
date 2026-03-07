@@ -494,21 +494,20 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         // Skip messages that are after our range (shouldn't happen, but safe)
         if (ts > toTs) continue;
 
-        // Skip messages sent "on behalf of the group/channel" (anonymous admin)
-        if (
-          msg.fromId?.className === 'PeerChannel' ||
-          msg.fromId?.className === 'PeerChat' ||
-          msg.post === true
-        ) {
+        // Only delete messages from real users (PeerUser).
+        // Skip: channel posts, anonymous admin, group-signed, service, etc.
+        if (!msg.fromId || msg.fromId.className !== 'PeerUser') {
           continue;
         }
 
         const senderId: number = Number(
-          msg.fromId?.userId?.toJSNumber?.() ??
-            msg.fromId?.userId ??
-            msg.peerId?.userId?.toJSNumber?.() ??
+          msg.fromId.userId?.toJSNumber?.() ??
+            msg.fromId.userId ??
             0,
         );
+
+        // Extra safety: skip if we couldn't resolve a real user ID
+        if (!senderId) continue;
 
         // Exclude protected users (owner, bots, etc.)
         if (senderId && excludeUserIds.includes(senderId)) continue;
