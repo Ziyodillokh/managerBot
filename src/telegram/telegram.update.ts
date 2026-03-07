@@ -240,6 +240,9 @@ export class TelegramUpdate implements OnModuleInit {
       // Skip messages sent on behalf of the group/channel (anonymous admin)
       if (msg.sender_chat) return next();
 
+      // Skip messages from bots — they must never be deleted
+      if (ctx.from.is_bot) return next();
+
       await this.usersService.findOrCreate(
         ctx.from.id,
         ctx.from.first_name,
@@ -1300,8 +1303,11 @@ export class TelegramUpdate implements OnModuleInit {
         excludeIds.push(ownerNumericId);
 
       // Exclude messages sent "on behalf of the group" (anonymous admin)
-      // GroupAnonymousBot ID = 1087968824, also the group's own ID
-      if (!excludeIds.includes(1087968824)) excludeIds.push(1087968824);
+      // GroupAnonymousBot = 1087968824, Channel bot = 136817688
+      const SYSTEM_BOT_IDS = [1087968824, 136817688, 777000];
+      for (const sbid of SYSTEM_BOT_IDS) {
+        if (!excludeIds.includes(sbid)) excludeIds.push(sbid);
+      }
       const absChatId = Math.abs(groupTelegramId);
       if (!excludeIds.includes(absChatId)) excludeIds.push(absChatId);
 

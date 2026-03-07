@@ -479,6 +479,16 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       const messages: any[] = result?.messages ?? [];
       if (messages.length === 0) break;
 
+      // Build a set of bot user IDs from the users returned by getHistory
+      const botUserIds = new Set<number>();
+      const users: any[] = result?.users ?? [];
+      for (const u of users) {
+        if (u.bot) {
+          const uid = Number(u.id?.toJSNumber?.() ?? u.id ?? 0);
+          if (uid) botUserIds.add(uid);
+        }
+      }
+
       for (const msg of messages) {
         // MessageEmpty or ServiceMessage — skip
         if (!msg.date || msg.className === 'MessageEmpty') continue;
@@ -501,13 +511,14 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         }
 
         const senderId: number = Number(
-          msg.fromId.userId?.toJSNumber?.() ??
-            msg.fromId.userId ??
-            0,
+          msg.fromId.userId?.toJSNumber?.() ?? msg.fromId.userId ?? 0,
         );
 
         // Extra safety: skip if we couldn't resolve a real user ID
         if (!senderId) continue;
+
+        // Skip messages from bots (detected from getHistory users list)
+        if (botUserIds.has(senderId)) continue;
 
         // Exclude protected users (owner, bots, etc.)
         if (senderId && excludeUserIds.includes(senderId)) continue;
