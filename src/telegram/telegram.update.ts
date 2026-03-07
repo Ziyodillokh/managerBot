@@ -94,9 +94,7 @@ export class TelegramUpdate implements OnModuleInit {
   }
 
   private mtStatus(userId: number): string {
-    return this.mtproto.isReady()
-      ? this.t(userId).mtOn
-      : this.t(userId).mtOff;
+    return this.mtproto.isReady() ? this.t(userId).mtOn : this.t(userId).mtOff;
   }
 
   private modeLabel(userId: number): string {
@@ -156,11 +154,9 @@ export class TelegramUpdate implements OnModuleInit {
       const bm = await ctx.telegram.getChatMember(chat.id, botInfo.id);
       if (bm.status !== 'administrator') {
         try {
-          await ctx.telegram.sendMessage(
-            from.id,
-            t.noAdminRights(chat.title),
-            { parse_mode: 'HTML' },
-          );
+          await ctx.telegram.sendMessage(from.id, t.noAdminRights(chat.title), {
+            parse_mode: 'HTML',
+          });
         } catch {}
       }
     } catch {}
@@ -191,11 +187,9 @@ export class TelegramUpdate implements OnModuleInit {
     this.groupsCache.delete(from.id);
 
     try {
-      await ctx.telegram.sendMessage(
-        from.id,
-        t.addedToGroup(chat.title),
-        { parse_mode: 'HTML' },
-      );
+      await ctx.telegram.sendMessage(from.id, t.addedToGroup(chat.title), {
+        parse_mode: 'HTML',
+      });
     } catch {}
   }
 
@@ -295,10 +289,7 @@ export class TelegramUpdate implements OnModuleInit {
 
   /* ═══════ Language ═════════════════════════════════════════════════ */
 
-  private async sendLangSelect(
-    ctx: Context,
-    edit: boolean,
-  ): Promise<void> {
+  private async sendLangSelect(ctx: Context, edit: boolean): Promise<void> {
     const text = '🌐 <b>Tilni tanlang / Выберите язык:</b>';
     const keyboard = [
       Object.entries(LANG_LABELS).map(([c, l]) => ({
@@ -312,8 +303,12 @@ export class TelegramUpdate implements OnModuleInit {
     };
 
     if (edit) {
-      try { await (ctx as any).editMessageText(text, opts); } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -321,10 +316,14 @@ export class TelegramUpdate implements OnModuleInit {
 
   @Action(/^lang:(uz|ru)$/)
   async onLangSelect(@Ctx() ctx: Context): Promise<void> {
-    const code = ((ctx as any).callbackQuery?.data as string).split(':')[1] as Lang;
+    const code = ((ctx as any).callbackQuery?.data as string).split(
+      ':',
+    )[1] as Lang;
     const userId = ctx.from!.id;
     this.langMap.set(userId, code);
-    try { await this.usersService.setLang(userId, code); } catch {}
+    try {
+      await this.usersService.setLang(userId, code);
+    } catch {}
     await (ctx as any).answerCbQuery(this.t(userId).langChanged, {
       show_alert: false,
     });
@@ -366,10 +365,7 @@ export class TelegramUpdate implements OnModuleInit {
     return myGroups;
   }
 
-  private async sendMainMenu(
-    ctx: Context,
-    edit: boolean,
-  ): Promise<void> {
+  private async sendMainMenu(ctx: Context, edit: boolean): Promise<void> {
     const userId = ctx.from!.id;
     const t = this.t(userId);
     const botInfo = await this.bot.telegram.getMe();
@@ -426,8 +422,12 @@ export class TelegramUpdate implements OnModuleInit {
     };
 
     if (edit) {
-      try { await (ctx as any).editMessageText(text, opts); } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -486,9 +486,7 @@ export class TelegramUpdate implements OnModuleInit {
     ]);
 
     /* Day-of-week headers */
-    rows.push(
-      headers.map((h) => ({ text: h, callback_data: 'cal:noop' })),
-    );
+    rows.push(headers.map((h) => ({ text: h, callback_data: 'cal:noop' })));
 
     /* Day grid */
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
@@ -520,8 +518,7 @@ export class TelegramUpdate implements OnModuleInit {
     }
 
     if (row.length > 0) {
-      while (row.length < 7)
-        row.push({ text: ' ', callback_data: 'cal:noop' });
+      while (row.length < 7) row.push({ text: ' ', callback_data: 'cal:noop' });
       rows.push(row);
     }
 
@@ -577,8 +574,12 @@ export class TelegramUpdate implements OnModuleInit {
     };
 
     if (edit) {
-      try { await (ctx as any).editMessageText(text, opts); } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -586,7 +587,9 @@ export class TelegramUpdate implements OnModuleInit {
 
   @Action('cal:noop')
   async onCalNoop(@Ctx() ctx: Context): Promise<void> {
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
   }
 
   @Action(/^cal:nav:(\d{4}-\d{2})$/)
@@ -594,7 +597,9 @@ export class TelegramUpdate implements OnModuleInit {
     const userId = ctx.from!.id;
     const state = this.deleteStates.get(userId);
     if (!state) {
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
       return;
     }
     const data = (ctx as any).callbackQuery?.data as string;
@@ -610,7 +615,9 @@ export class TelegramUpdate implements OnModuleInit {
     const t = this.t(userId);
     const state = this.deleteStates.get(userId);
     if (!state) {
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
       return;
     }
 
@@ -656,7 +663,9 @@ export class TelegramUpdate implements OnModuleInit {
           },
         },
       );
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     }
   }
 
@@ -665,7 +674,9 @@ export class TelegramUpdate implements OnModuleInit {
     const userId = ctx.from!.id;
     const state = this.deleteStates.get(userId);
     if (!state?.startDate || !state.endDate) {
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
       return;
     }
 
@@ -675,9 +686,17 @@ export class TelegramUpdate implements OnModuleInit {
     const groupTitle = state.groupTitle;
 
     this.deleteStates.delete(userId);
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
 
-    await this.executeDelete(ctx, groupTelegramId, groupTitle, fromDate, toDate);
+    await this.executeDelete(
+      ctx,
+      groupTelegramId,
+      groupTitle,
+      fromDate,
+      toDate,
+    );
   }
 
   @Action('cal:cancel')
@@ -753,7 +772,9 @@ export class TelegramUpdate implements OnModuleInit {
         reply_markup: { inline_keyboard: keyboard },
       });
     } catch {}
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
   }
 
   @Action('protected:add')
@@ -775,7 +796,9 @@ export class TelegramUpdate implements OnModuleInit {
         },
       });
     } catch {}
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
   }
 
   @Action(/^prot:rem:(.+)$/)
@@ -826,7 +849,9 @@ export class TelegramUpdate implements OnModuleInit {
           },
         });
       } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
       return;
     }
 
@@ -851,7 +876,9 @@ export class TelegramUpdate implements OnModuleInit {
         reply_markup: { inline_keyboard: keyboard },
       });
     } catch {}
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
   }
 
   @Action(/^access:g:(.+)$/)
@@ -867,10 +894,11 @@ export class TelegramUpdate implements OnModuleInit {
   ): Promise<void> {
     const userId = ctx.from!.id;
     const t = this.t(userId);
-    const group =
-      await this.groupsService.findByTelegramId(groupTelegramId);
+    const group = await this.groupsService.findByTelegramId(groupTelegramId);
     if (!group) {
-      try { await (ctx as any).answerCbQuery(t.groupNotFound); } catch {}
+      try {
+        await (ctx as any).answerCbQuery(t.groupNotFound);
+      } catch {}
       return;
     }
 
@@ -917,8 +945,12 @@ export class TelegramUpdate implements OnModuleInit {
     };
 
     if (edit) {
-      try { await (ctx as any).editMessageText(text, opts); } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).editMessageText(text, opts);
+      } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
     } else {
       await ctx.reply(text, opts);
     }
@@ -948,7 +980,9 @@ export class TelegramUpdate implements OnModuleInit {
         },
       });
     } catch {}
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
   }
 
   @Action(/^access:rev:(.+):(.+)$/)
@@ -1014,7 +1048,9 @@ export class TelegramUpdate implements OnModuleInit {
           },
         });
       } catch {}
-      try { await (ctx as any).answerCbQuery(); } catch {}
+      try {
+        await (ctx as any).answerCbQuery();
+      } catch {}
       return;
     }
 
@@ -1046,7 +1082,9 @@ export class TelegramUpdate implements OnModuleInit {
         reply_markup: { inline_keyboard: keyboard },
       });
     } catch {}
-    try { await (ctx as any).answerCbQuery(); } catch {}
+    try {
+      await (ctx as any).answerCbQuery();
+    } catch {}
   }
 
   @Action(/^del:g:(.+)$/)
@@ -1089,9 +1127,7 @@ export class TelegramUpdate implements OnModuleInit {
       );
 
       /* FIX: combined message — no double-send */
-      const pList = await this.adminsService.getProtectedUsers(
-        String(userId),
-      );
+      const pList = await this.adminsService.getProtectedUsers(String(userId));
       const keyboard: any[][] = [];
       const resultLine = added ? t.addSuccess(clean) : t.addAlready(clean);
       let menuText: string;
@@ -1102,9 +1138,7 @@ export class TelegramUpdate implements OnModuleInit {
         menuText =
           resultLine +
           '\n\n' +
-          t.addList(
-            pList.map((p, i) => `${i + 1}. @${p.username}`).join('\n'),
-          );
+          t.addList(pList.map((p, i) => `${i + 1}. @${p.username}`).join('\n'));
         for (const p of pList)
           keyboard.push([
             {
@@ -1113,9 +1147,7 @@ export class TelegramUpdate implements OnModuleInit {
             },
           ]);
       }
-      keyboard.push([
-        { text: t.btnAddUser, callback_data: 'protected:add' },
-      ]);
+      keyboard.push([{ text: t.btnAddUser, callback_data: 'protected:add' }]);
       keyboard.push([{ text: t.btnBack, callback_data: 'menu:main' }]);
 
       await ctx.reply(menuText, {
@@ -1148,10 +1180,7 @@ export class TelegramUpdate implements OnModuleInit {
           Number(gid),
           Number(targetUser.telegramId),
         );
-        if (
-          member.status !== 'administrator' &&
-          member.status !== 'creator'
-        ) {
+        if (member.status !== 'administrator' && member.status !== 'creator') {
           await ctx.reply(t.accessNotAdmin, { parse_mode: 'HTML' });
           return;
         }
@@ -1261,12 +1290,11 @@ export class TelegramUpdate implements OnModuleInit {
         } else {
           /* Clean DB records */
           try {
-            const dbMsgs =
-              await this.messagesService.getMessagesByDateRange(
-                groupTelegramId,
-                fromDate,
-                toDate,
-              );
+            const dbMsgs = await this.messagesService.getMessagesByDateRange(
+              groupTelegramId,
+              fromDate,
+              toDate,
+            );
             const dbIds = dbMsgs
               .filter((m) => !excludeSet.has(String(m.telegramUserId)))
               .map((m) => m.id);
@@ -1275,12 +1303,8 @@ export class TelegramUpdate implements OnModuleInit {
           } catch {}
 
           const resultText =
-            t.resultAll(
-              groupTitle,
-              result.deleted,
-              r,
-              this.modeLabel(userId),
-            ) + (result.failed > 0 ? t.failedSome(result.failed) : '');
+            t.resultAll(groupTitle, result.deleted, r, this.modeLabel(userId)) +
+            (result.failed > 0 ? t.failedSome(result.failed) : '');
 
           await edit(resultText, {
             reply_markup: {
@@ -1297,12 +1321,11 @@ export class TelegramUpdate implements OnModuleInit {
       }
 
       /* STRATEGY B: Bot API fallback */
-      const messages =
-        await this.messagesService.getMessagesByDateRange(
-          groupTelegramId,
-          fromDate,
-          toDate,
-        );
+      const messages = await this.messagesService.getMessagesByDateRange(
+        groupTelegramId,
+        fromDate,
+        toDate,
+      );
       const toDeleteMsgs = messages.filter(
         (m) => !excludeSet.has(String(m.telegramUserId)),
       );
@@ -1316,8 +1339,7 @@ export class TelegramUpdate implements OnModuleInit {
 
       const msgIds = toDeleteMsgs.map((m) => Number(m.telegramMessageId));
       const dbIdMap: Record<number, number> = {};
-      for (const m of toDeleteMsgs)
-        dbIdMap[Number(m.telegramMessageId)] = m.id;
+      for (const m of toDeleteMsgs) dbIdMap[Number(m.telegramMessageId)] = m.id;
 
       let deleted = 0;
       let failed = 0;
@@ -1352,8 +1374,7 @@ export class TelegramUpdate implements OnModuleInit {
 
       /* Clean DB */
       const dbIds = msgIds.map((id) => dbIdMap[id]).filter(Boolean);
-      if (dbIds.length)
-        await this.messagesService.deleteMessagesFromDb(dbIds);
+      if (dbIds.length) await this.messagesService.deleteMessagesFromDb(dbIds);
 
       const mode = usedFallback ? t.botApiMode : this.modeLabel(userId);
       const resultText =
@@ -1372,7 +1393,9 @@ export class TelegramUpdate implements OnModuleInit {
       });
     } catch (err) {
       this.logger.error('executeDelete error', err);
-      try { await ctx.reply(t.error); } catch {}
+      try {
+        await ctx.reply(t.error);
+      } catch {}
     }
   }
 }

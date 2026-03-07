@@ -7,12 +7,32 @@ export const LANG_LABELS: Record<Lang, string> = {
 
 export const MONTH_NAMES: Record<Lang, string[]> = {
   uz: [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+    'Yanvar',
+    'Fevral',
+    'Mart',
+    'Aprel',
+    'May',
+    'Iyun',
+    'Iyul',
+    'Avgust',
+    'Sentabr',
+    'Oktabr',
+    'Noyabr',
+    'Dekabr',
   ],
   ru: [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+    'Январь',
+    'Февраль',
+    'Март',
+    'Апрель',
+    'Май',
+    'Июнь',
+    'Июль',
+    'Август',
+    'Сентябрь',
+    'Октябрь',
+    'Ноябрь',
+    'Декабрь',
   ],
 };
 
@@ -45,19 +65,19 @@ export const T = {
     helpText:
       '❓ <b>Yordam</b>\n\n' +
       "<b>1. Botni guruhga qo'shing</b>\n" +
-      "   \"➕ Guruhga qo'shish\" tugmasini bosing\n\n" +
+      '   "➕ Guruhga qo\'shish" tugmasini bosing\n\n' +
       '<b>2. Botga admin huquqi bering</b>\n' +
       '   "Delete messages" huquqini yoqing\n\n' +
       "<b>3. Xabar o'chirish</b>\n" +
-      "   📅 Kalendar orqali sana oraligini tanlang\n" +
+      '   📅 Kalendar orqali sana oraligini tanlang\n' +
       "   Barcha xabarlar o'chiriladi\n" +
-      "   (egasi, botlar, himoyalangan — tashqari)\n\n" +
+      '   (egasi, botlar, himoyalangan — tashqari)\n\n' +
       '<b>4. 🛡 Himoyalangan</b>\n' +
       "   /add — himoyalangan ro'yxatga username qo'shish\n" +
       "   Ularning xabarlari hech qachon o'chirilmaydi\n\n" +
       '<b>5. 👥 Ruxsatlar (faqat guruh egasi)</b>\n' +
       "   Guruh adminlariga o'chirish huquqini bering\n" +
-      '   Ruxsat berilganlar ham to\'liq (MTProto) rejimda ishlaydi',
+      "   Ruxsat berilganlar ham to'liq (MTProto) rejimda ishlaydi",
     selectGroup: '📋 <b>Guruhni tanlang:</b>',
     noGroups:
       "❌ Sizda bot qo'shilgan guruh yo'q.\n\n\"➕ Guruhga qo'shish\" tugmasini bosing.",
@@ -75,7 +95,8 @@ export const T = {
       `\n⚠️ ${n} ta xabar o'chirilmadi (allaqachon o'chirilgan yoki eski).`,
     groupNotFound: '❌ Guruh topilmadi.',
     error: "❌ Xatolik yuz berdi. Qayta urinib ko'ring.",
-    dateOrderError: "❌ Boshlanish sanasi tugash sanasidan oldin bo'lishi kerak.",
+    dateOrderError:
+      "❌ Boshlanish sanasi tugash sanasidan oldin bo'lishi kerak.",
     badFormat: "❌ Format noto'g'ri.\n\n",
     notOwner: (title: string) =>
       `<b>❌ Xato!</b>\n\nSiz <b>${title}</b> guruhining egasi yoki admini emassiz.\nGuruhdan chiqyapman.`,
@@ -105,13 +126,13 @@ export const T = {
     addPrompt: '🛡 Username kiriting:\n\nMisol: <code>@username</code>',
     addSuccess: (username: string) =>
       `✅ @${username} himoyalangan ro'yxatga qo'shildi.`,
-    addAlready: (username: string) =>
-      `ℹ️ @${username} allaqachon ro'yxatda.`,
+    addAlready: (username: string) => `ℹ️ @${username} allaqachon ro'yxatda.`,
     addRemoved: (username: string) =>
       `✅ @${username} ro'yxatdan olib tashlandi.`,
     addList: (list: string) =>
       `🛡 <b>Himoyalangan foydalanuvchilar:</b>\n\n${list}\n\n<i>Ularning xabarlari hech qachon o'chirilmaydi.</i>`,
-    addEmpty: "🛡 Himoyalangan foydalanuvchilar yo'q.\n\n➕ Qo'shish tugmasini bosing.",
+    addEmpty:
+      "🛡 Himoyalangan foydalanuvchilar yo'q.\n\n➕ Qo'shish tugmasini bosing.",
     btnProtected: '🛡 Himoyalangan',
     btnAddUser: "➕ Qo'shish",
     accessGranted: (username: string, group: string) =>
@@ -124,7 +145,8 @@ export const T = {
       `👥 <b>${group}</b> — hech kimga ruxsat berilmagan.\n\n➕ tugmani bosib admin qo'shing.`,
     btnAccess: '👥 Ruxsatlar',
     accessNotAdmin: '❌ Bu foydalanuvchi guruh admini emas.',
-    accessPrompt: "👥 Admin username'ini kiriting:\n\nMisol: <code>@username</code>",
+    accessPrompt:
+      "👥 Admin username'ini kiriting:\n\nMisol: <code>@username</code>",
     accessSelectGroup: '👥 <b>Guruhni tanlang:</b>',
   },
 
@@ -224,7 +246,8 @@ export const T = {
       `👥 <b>${group}</b> — доступ никому не выдан.\n\n➕ Добавьте админа.`,
     btnAccess: '👥 Доступы',
     accessNotAdmin: '❌ Этот пользователь не админ группы.',
-    accessPrompt: '👥 Введите username админа:\n\nПример: <code>@username</code>',
+    accessPrompt:
+      '👥 Введите username админа:\n\nПример: <code>@username</code>',
     accessSelectGroup: '👥 <b>Выберите группу:</b>',
   },
 } as const;

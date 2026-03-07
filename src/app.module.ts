@@ -11,8 +11,8 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { Group } from './modules/groups/entities/group.entity';
 import { User } from './modules/users/entities/user.entity';
 import { GroupAdmin } from './modules/admins/entities/group-admin.entity';
-import { ProtectedUser } from './modules/admins/entities/protected-user.entity';
 import { Message } from './modules/messages/entities/message.entity';
+import { ProtectedUser } from './modules/admins/entities/protected-user.entity';
 
 @Module({
   imports: [
