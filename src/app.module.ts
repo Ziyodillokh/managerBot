@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TelegrafModule } from 'nestjs-telegraf';
@@ -13,6 +14,7 @@ import { User } from './modules/users/entities/user.entity';
 import { GroupAdmin } from './modules/admins/entities/group-admin.entity';
 import { Message } from './modules/messages/entities/message.entity';
 import { ProtectedUser } from './modules/admins/entities/protected-user.entity';
+import { TelegrafExceptionFilter } from './common/filters/telegraf-exception.filter';
 
 @Module({
   imports: [
@@ -35,7 +37,8 @@ import { ProtectedUser } from './modules/admins/entities/protected-user.entity';
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
         entities: [Group, User, GroupAdmin, ProtectedUser, Message],
-        synchronize: true,
+        // TODO: production da false qilib, migration ishlatish kerak
+        synchronize: config.get<string>('nodeEnv') === 'development',
         logging: config.get<string>('nodeEnv') === 'development',
         ssl: false,
       }),
@@ -57,6 +60,12 @@ import { ProtectedUser } from './modules/admins/entities/protected-user.entity';
     AdminsModule,
     MessagesModule,
     TelegramModule,
+  ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: TelegrafExceptionFilter,
+    },
   ],
 })
 export class AppModule {}

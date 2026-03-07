@@ -21,7 +21,7 @@ export class Group {
   title: string;
 
   @Column({ nullable: true })
-  username: string;
+  username: string | null;
 
   @Column({ default: 'supergroup' })
   type: string;
@@ -35,9 +35,9 @@ export class Group {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => GroupAdmin, (admin) => admin.group, { cascade: true })
+  @OneToMany(() => GroupAdmin, (admin) => admin.group)
   admins: GroupAdmin[];
 
-  @OneToMany(() => Message, (msg) => msg.group, { cascade: true })
+  @OneToMany(() => Message, (msg) => msg.group)
   messages: Message[];
 }

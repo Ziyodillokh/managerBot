@@ -494,11 +494,12 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         // Skip messages that are after our range (shouldn't happen, but safe)
         if (ts > toTs) continue;
 
-        const senderId: number =
+        const senderId: number = Number(
           msg.fromId?.userId?.toJSNumber?.() ??
-          msg.fromId?.userId ??
-          msg.peerId?.userId?.toJSNumber?.() ??
-          0;
+            msg.fromId?.userId ??
+            msg.peerId?.userId?.toJSNumber?.() ??
+            0,
+        );
 
         // Exclude protected users (owner, bots, etc.)
         if (senderId && excludeUserIds.includes(senderId)) continue;
@@ -558,7 +559,7 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Call progress callback every ~300 messages (lower threshold for small sets)
-      progressTimer += window.length * BATCH_SIZE;
+      progressTimer += window.reduce((sum, b) => sum + b.length, 0);
       if (onProgress && progressTimer >= 300) {
         progressTimer = 0;
         try {

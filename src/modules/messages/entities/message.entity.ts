@@ -13,6 +13,7 @@ import { User } from '../../users/entities/user.entity';
 @Entity('messages')
 @Index(['groupId', 'sentAt'])
 @Index(['groupId', 'userId', 'sentAt'])
+@Index(['telegramMessageId', 'groupId'], { unique: true })
 export class Message {
   @PrimaryGeneratedColumn()
   id: number;

@@ -21,10 +21,21 @@ export class GroupsService {
     if (!group) {
       group = this.groupRepo.create({ telegramId: tid, title, type, username });
       await this.groupRepo.save(group);
-    } else if (group.title !== title || group.username !== username) {
-      group.title = title;
-      if (username) group.username = username;
-      await this.groupRepo.save(group);
+    } else {
+      let dirty = false;
+      if (!group.isActive) {
+        group.isActive = true;
+        dirty = true;
+      }
+      if (group.title !== title) {
+        group.title = title;
+        dirty = true;
+      }
+      if (group.username !== (username ?? null)) {
+        group.username = username ?? null;
+        dirty = true;
+      }
+      if (dirty) await this.groupRepo.save(group);
     }
     return group;
   }

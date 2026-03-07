@@ -16,6 +16,10 @@ export class ProtectedUser {
   @Column({ type: 'bigint' })
   ownerTelegramId: string;
 
+  /** Telegram numeric ID resolved at add-time (nullable for legacy rows) */
+  @Column({ type: 'bigint', nullable: true })
+  telegramUserId: string | null;
+
   /** Username (without @) whose messages are never deleted */
   @Column({ length: 64 })
   username: string;

@@ -115,6 +115,7 @@ export class AdminsService {
   async addProtectedUser(
     ownerTelegramId: string,
     username: string,
+    telegramUserId?: string,
   ): Promise<ProtectedUser | null> {
     const clean = username.startsWith('@') ? username.slice(1) : username;
     const existing = await this.protectedRepo.findOne({
@@ -124,6 +125,7 @@ export class AdminsService {
     const pu = this.protectedRepo.create({
       ownerTelegramId,
       username: clean,
+      telegramUserId: telegramUserId ?? null,
     });
     return this.protectedRepo.save(pu);
   }

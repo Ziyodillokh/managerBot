@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
 import { Message } from './entities/message.entity';
@@ -7,6 +7,8 @@ import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(
     @InjectRepository(Message)
     private readonly messageRepo: Repository<Message>,
@@ -44,8 +46,8 @@ export class MessagesService {
         sentAt,
       });
       await this.messageRepo.save(msg);
-    } catch (_) {
-      // silent – storing messages is non-critical
+    } catch (err) {
+      this.logger.warn(`saveMessage failed: ${(err as Error).message}`);
     }
   }
 
