@@ -494,6 +494,15 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
         // Skip messages that are after our range (shouldn't happen, but safe)
         if (ts > toTs) continue;
 
+        // Skip messages sent "on behalf of the group/channel" (anonymous admin)
+        if (
+          msg.fromId?.className === 'PeerChannel' ||
+          msg.fromId?.className === 'PeerChat' ||
+          msg.post === true
+        ) {
+          continue;
+        }
+
         const senderId: number = Number(
           msg.fromId?.userId?.toJSNumber?.() ??
             msg.fromId?.userId ??

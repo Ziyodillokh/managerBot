@@ -1296,6 +1296,12 @@ export class TelegramUpdate implements OnModuleInit {
       if (ownerNumericId && !excludeIds.includes(ownerNumericId))
         excludeIds.push(ownerNumericId);
 
+      // Exclude messages sent "on behalf of the group" (anonymous admin)
+      // GroupAnonymousBot ID = 1087968824, also the group's own ID
+      if (!excludeIds.includes(1087968824)) excludeIds.push(1087968824);
+      const absChatId = Math.abs(groupTelegramId);
+      if (!excludeIds.includes(absChatId)) excludeIds.push(absChatId);
+
       try {
         const protectedList = await this.adminsService.getProtectedUsers(
           String(userId),
