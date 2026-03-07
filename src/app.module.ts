@@ -37,8 +37,8 @@ import { TelegrafExceptionFilter } from './common/filters/telegraf-exception.fil
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
         entities: [Group, User, GroupAdmin, ProtectedUser, Message],
-        // TODO: production da false qilib, migration ishlatish kerak
-        synchronize: config.get<string>('nodeEnv') === 'development',
+        // TODO: production da migration ishlatish kerak
+        synchronize: true,
         logging: config.get<string>('nodeEnv') === 'development',
         ssl: false,
       }),
