@@ -19,13 +19,22 @@ export class UsersService {
     const tid = String(telegramId);
     let user = await this.userRepo.findOne({ where: { telegramId: tid } });
     if (!user) {
-      user = this.userRepo.create({
-        telegramId: tid,
-        firstName,
-        lastName,
-        username,
-      });
-      return this.userRepo.save(user);
+      try {
+        user = this.userRepo.create({
+          telegramId: tid,
+          firstName,
+          lastName,
+          username,
+        });
+        return await this.userRepo.save(user);
+      } catch (err: any) {
+        // Race condition: another request inserted the same user — just fetch it
+        if (err?.code === '23505') {
+          user = await this.userRepo.findOne({ where: { telegramId: tid } });
+          if (user) return user;
+        }
+        throw err;
+      }
     }
     // Only update if something actually changed
     let changed = false;

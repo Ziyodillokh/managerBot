@@ -19,8 +19,16 @@ export class GroupsService {
     const tid = String(telegramId);
     let group = await this.groupRepo.findOne({ where: { telegramId: tid } });
     if (!group) {
-      group = this.groupRepo.create({ telegramId: tid, title, type, username });
-      await this.groupRepo.save(group);
+      try {
+        group = this.groupRepo.create({ telegramId: tid, title, type, username });
+        await this.groupRepo.save(group);
+      } catch (err: any) {
+        if (err?.code === '23505') {
+          group = await this.groupRepo.findOne({ where: { telegramId: tid } });
+          if (group) return group;
+        }
+        throw err;
+      }
     } else {
       let dirty = false;
       if (!group.isActive) {

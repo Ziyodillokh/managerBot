@@ -647,7 +647,8 @@ export class TelegramUpdate implements OnModuleInit {
 
     const data = (ctx as any).callbackQuery?.data as string;
     const ds = data.replace('cal:day:', '');
-    const selected = new Date(ds + 'T00:00:00.000Z');
+    // Build date in Uzbekistan time (UTC+5): midnight UZT = previous day 19:00 UTC
+    const selected = new Date(ds + 'T00:00:00.000+05:00');
 
     if (state.step === 'select_start_date') {
       state.startDate = selected;
@@ -705,7 +706,8 @@ export class TelegramUpdate implements OnModuleInit {
     }
 
     const fromDate = state.startDate;
-    const toDate = new Date(state.endDate.getTime() + 86_399_999); // 23:59:59.999
+    // endDate 23:59:59.999 UZT (the +05:00 offset is already baked into startDate/endDate)
+    const toDate = new Date(state.endDate.getTime() + 86_399_999);
     const groupTelegramId = state.groupTelegramId;
     const groupTitle = state.groupTitle;
 
