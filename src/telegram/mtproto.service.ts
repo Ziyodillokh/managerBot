@@ -117,7 +117,19 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     // gramjs handles negative Bot-API IDs correctly when you pass them as
     // a string or BigInt to getEntity(). Using the raw number sometimes
     // confuses it, so we convert explicitly.
-    const entity = await this.client!.getEntity(chatId as any);
+    let entity: any;
+    try {
+      entity = await this.client!.getEntity(chatId as any);
+    } catch (err: any) {
+      const msg: string = err?.message ?? '';
+      if (msg.includes('Could not find the input entity')) {
+        // MTProto session user hasn't "seen" this group — not a member
+        const notMemberErr: any = new Error(`NOT_MEMBER:${chatId}`);
+        notMemberErr.notMember = true;
+        throw notMemberErr;
+      }
+      throw err;
+    }
 
     const className: string = (entity as any).className ?? '';
     const type: PeerEntry['type'] =
@@ -246,9 +258,15 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
     try {
       peer = await this.resolvePeer(chatId);
     } catch (err: any) {
-      this.logger.error(
-        `Failed to resolve peer for chatId=${chatId}: ${err?.message ?? err}`,
-      );
+      if (err?.notMember) {
+        this.logger.warn(
+          `deleteMessages: session user not member of chatId=${chatId}`,
+        );
+      } else {
+        this.logger.error(
+          `Failed to resolve peer for chatId=${chatId}: ${err?.message ?? err}`,
+        );
+      }
       return { deleted: 0, failed: messageIds.length };
     }
 
@@ -336,10 +354,13 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
       const msg: string = err?.errorMessage ?? err?.message ?? '';
       // If the session user is not a member of this chat, return notMember flag
       if (
+        err?.notMember ||
         msg.includes('CHANNEL_PRIVATE') ||
         msg.includes('CHAT_ID_INVALID') ||
         msg.includes('USER_NOT_PARTICIPANT') ||
-        msg.includes('PEER_ID_INVALID')
+        msg.includes('PEER_ID_INVALID') ||
+        msg.includes('Could not find the input entity') ||
+        msg.includes('NOT_MEMBER')
       ) {
         this.logger.warn(
           `Session user not a member of chatId=${chatId} — will fall back to DB`,
@@ -392,7 +413,9 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
           msg.includes('CHANNEL_PRIVATE') ||
           msg.includes('CHAT_ID_INVALID') ||
           msg.includes('USER_NOT_PARTICIPANT') ||
-          msg.includes('PEER_ID_INVALID')
+          msg.includes('PEER_ID_INVALID') ||
+          msg.includes('Could not find the input entity') ||
+          msg.includes('NOT_MEMBER')
         ) {
           this.logger.warn(
             `GetHistory: session user not member of chatId=${chatId}`,
