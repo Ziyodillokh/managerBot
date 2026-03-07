@@ -5,11 +5,13 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { Group } from '../../groups/entities/group.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('group_admins')
+@Index(['groupId', 'telegramUserId'], { unique: true })
 export class GroupAdmin {
   @PrimaryGeneratedColumn()
   id: number;

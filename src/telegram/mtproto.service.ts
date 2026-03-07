@@ -519,13 +519,15 @@ export class MtprotoService implements OnModuleInit, OnModuleDestroy {
 
   private silentLogger() {
     const noop = () => {};
-    const obj = {
+    const obj: any = {
       warn: noop,
       error: noop,
       info: noop,
       debug: noop,
       trace: noop,
+      canSend: () => false,
     };
-    return { ...obj, child: () => obj };
+    obj.child = () => obj;
+    return obj;
   }
 }
