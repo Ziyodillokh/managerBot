@@ -20,7 +20,12 @@ export class GroupsService {
     let group = await this.groupRepo.findOne({ where: { telegramId: tid } });
     if (!group) {
       try {
-        group = this.groupRepo.create({ telegramId: tid, title, type, username });
+        group = this.groupRepo.create({
+          telegramId: tid,
+          title,
+          type,
+          username,
+        });
         await this.groupRepo.save(group);
       } catch (err: any) {
         if (err?.code === '23505') {

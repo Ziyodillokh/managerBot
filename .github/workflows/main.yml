@@ -58,6 +58,18 @@ jobs:
           name: dist
           path: dist/
 
+      - name: Ensure deploy directory on server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            mkdir -p /var/www/guardy
+            chmod 755 /var/www /var/www/guardy
+
+      # Deploy path on server (must match server layout)
       - name: Copy files to server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -69,6 +81,8 @@ jobs:
           target: '/var/www/guardy'
           rm: false
 
+      # Ilova faqat PM2 orqali ishlaydi. PostgreSQL serverda odatda systemd postgresql
+      # yoki alohida host — Docker shart emas. /var/www/guardy/.env da DB_* va TELEGRAM_* bo‘lishi kerak.
       - name: Deploy on server via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -82,20 +96,6 @@ jobs:
 
             echo "=== Installing production dependencies ==="
             npm ci --omit=dev
-
-            echo "=== Ensuring DB tables exist ==="
-            docker exec tavba_postgres psql -U postgres -d guardy_db -c "
-              GRANT ALL ON SCHEMA public TO guardy_user;
-              CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, \"telegramId\" BIGINT UNIQUE NOT NULL, username VARCHAR(64), \"firstName\" VARCHAR(255) NOT NULL, \"lastName\" VARCHAR(255), \"createdAt\" TIMESTAMPTZ NOT NULL DEFAULT now(), \"updatedAt\" TIMESTAMPTZ NOT NULL DEFAULT now());
-              CREATE TABLE IF NOT EXISTS groups (id SERIAL PRIMARY KEY, \"telegramId\" BIGINT UNIQUE NOT NULL, title VARCHAR(255) NOT NULL, username VARCHAR(255), type VARCHAR NOT NULL DEFAULT 'supergroup', \"isActive\" BOOLEAN NOT NULL DEFAULT true, \"createdAt\" TIMESTAMPTZ NOT NULL DEFAULT now(), \"updatedAt\" TIMESTAMPTZ NOT NULL DEFAULT now());
-              CREATE TABLE IF NOT EXISTS group_admins (id SERIAL PRIMARY KEY, \"groupId\" INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE, \"userId\" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, \"telegramUserId\" BIGINT NOT NULL, \"isOwner\" BOOLEAN NOT NULL DEFAULT false, \"canDeleteMessages\" BOOLEAN NOT NULL DEFAULT false, \"canRestrictMembers\" BOOLEAN NOT NULL DEFAULT false, \"canManageChat\" BOOLEAN NOT NULL DEFAULT false, \"canPromoteMembers\" BOOLEAN NOT NULL DEFAULT false, \"cachedAt\" TIMESTAMPTZ NOT NULL DEFAULT now());
-              CREATE TABLE IF NOT EXISTS group_settings (id SERIAL PRIMARY KEY, \"groupId\" INTEGER UNIQUE NOT NULL REFERENCES groups(id) ON DELETE CASCADE, \"muteEnabled\" BOOLEAN NOT NULL DEFAULT true, \"deleteEnabled\" BOOLEAN NOT NULL DEFAULT true, \"welcomeEnabled\" BOOLEAN NOT NULL DEFAULT true, \"antiSpamEnabled\" BOOLEAN NOT NULL DEFAULT false, \"antiFloodEnabled\" BOOLEAN NOT NULL DEFAULT false, extra JSONB NOT NULL DEFAULT '{}', \"createdAt\" TIMESTAMPTZ NOT NULL DEFAULT now(), \"updatedAt\" TIMESTAMPTZ NOT NULL DEFAULT now());
-              CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, \"telegramMessageId\" BIGINT NOT NULL, \"groupId\" INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE, \"userId\" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, \"telegramUserId\" BIGINT NOT NULL, text VARCHAR(4096), \"telegramUsername\" VARCHAR(255), \"sentAt\" TIMESTAMPTZ NOT NULL, \"createdAt\" TIMESTAMPTZ NOT NULL DEFAULT now());
-              CREATE INDEX IF NOT EXISTS idx_messages_group_sent ON messages (\"groupId\", \"sentAt\");
-              CREATE INDEX IF NOT EXISTS idx_messages_group_user_sent ON messages (\"groupId\", \"userId\", \"sentAt\");
-              GRANT ALL ON ALL TABLES IN SCHEMA public TO guardy_user;
-              GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO guardy_user;
-            " 2>&1 | grep -v 'already exists' || true
 
             echo "=== Restarting with PM2 ==="
             if pm2 list | grep -q "guardy"; then
