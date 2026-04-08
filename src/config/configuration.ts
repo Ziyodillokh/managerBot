@@ -13,5 +13,9 @@ export default () => ({
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || '',
     name: process.env.DB_NAME || 'manager_bot',
+    ssl:
+      process.env.DB_SSL === 'true' || process.env.DB_SSL === '1'
+        ? { rejectUnauthorized: false }
+        : false,
   },
 });

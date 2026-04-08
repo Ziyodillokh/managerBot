@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
+import * as path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TelegrafModule } from 'nestjs-telegraf';
@@ -22,7 +23,7 @@ import { TelegrafExceptionFilter } from './common/filters/telegraf-exception.fil
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: '.env',
+      envFilePath: path.join(process.cwd(), '.env'),
     }),
 
     // ─── Database ─────────────────────────────────────────────────
@@ -40,7 +41,7 @@ import { TelegrafExceptionFilter } from './common/filters/telegraf-exception.fil
         // TODO: production da migration ishlatish kerak
         synchronize: true,
         logging: config.get<string>('nodeEnv') === 'development',
-        ssl: false,
+        ssl: config.get('database.ssl') ?? false,
       }),
     }),
 
@@ -48,10 +49,22 @@ import { TelegrafExceptionFilter } from './common/filters/telegraf-exception.fil
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        token: config.get<string>('telegram.botToken')!,
-        middlewares: [],
-      }),
+      useFactory: (config: ConfigService) => {
+        const raw = config.get<string>('telegram.botToken') ?? '';
+        const token = raw.trim();
+        if (!token) {
+          throw new Error(
+            'TELEGRAM_BOT_TOKEN is empty. Check /var/www/guardy/.env on the server.',
+          );
+        }
+        return {
+          token,
+          middlewares: [],
+          launchOptions: {
+            dropPendingUpdates: true,
+          },
+        };
+      },
     }),
 
     // ─── Feature Modules ──────────────────────────────────────────
